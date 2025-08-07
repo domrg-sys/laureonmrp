@@ -38,18 +38,22 @@
             <label for="{{ form.has_spaces.id_for_label }}">Has Spaces</label>
           </div>
           
-          {# Manually render grid fields #}
-          <div class="form-field">{{ form.rows.label_tag }}
+          {# THE FIX: The helper text now correctly appears AFTER the input field. #}
+          <div class="form-field">
+            {{ form.rows.label_tag }}
+            {{ form.rows }}
             {% if form.rows.help_text %}
               <p class="help-text">{{ form.rows.help_text }}</p>
             {% endif %}
-            {{ form.rows }}</div>
+          </div>
 
-          <div class="form-field">{{ form.columns.label_tag }}
+          <div class="form-field">
+            {{ form.columns.label_tag }}
+            {{ form.columns }}
             {% if form.columns.help_text %}
               <p class="help-text">{{ form.columns.help_text }}</p>
             {% endif %}
-            {{ form.columns }}</div>
+          </div>
 
           <div class="form-actions">
               <button type="submit" class="btn btn-green">Save</button>

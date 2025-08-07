@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import permission_required
 from django.urls import reverse
 from .models import Location, LocationType, LocationSpace
 from django import forms
+from django.utils.safestring import mark_safe
 
 # This list defines the tabs for the entire "Location Configuration" section.
 TABS = [
@@ -39,11 +40,36 @@ def locations_tab_view(request):
     context = _prepare_tabs_context('locations')
     return render(request, 'location_configuration/locations_tab.html', context)
 
+ICON_CHOICES = [
+    ('', '---------'),
+    ('warehouse', 'Warehouse'),
+    ('factory', 'Factory'),
+    ('room', 'Room'),
+    ('door_front', 'Door'),
+    ('shelves', 'Shelves'),
+    ('freezer', 'Freezer'),
+    ('conveyor_belt', 'Conveyor Belt'),
+    ('science', 'Laboratory'),
+    ('biotech', 'Biotech'),
+    ('location_on', 'Generic Pin'),
+]
+
 # --- Form for LocationType ---
 class LocationTypeForm(forms.ModelForm):
+    # Explicitly define the 'icon' field to ensure it becomes a dropdown.
+    icon = forms.ChoiceField(
+        choices=ICON_CHOICES,
+        required=False, # Make it optional
+        label="Icon"
+    )
+
     class Meta:
         model = LocationType
+        # The 'icon' field is now defined above, so it's handled.
         fields = ['name', 'icon', 'allowed_parents', 'can_store_inventory', 'can_store_samples', 'has_spaces', 'rows', 'columns']
+        widgets = {
+            'allowed_parents': forms.CheckboxSelectMultiple(attrs={'class': 'checkbox-list'}),
+        }
 
 # --- VIEW 2: For the "Location Types" Tab ---
 @permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
@@ -72,7 +98,10 @@ def location_types_tab_view(request):
         if type_obj.rows and type_obj.columns:
             grid_display = f"{type_obj.rows}x{type_obj.columns}"
         else:
-            grid_display = "N/A"
+            grid_display = "—"
+
+        def get_checkbox_html(checked):
+            return mark_safe('<input type="checkbox" disabled {}>'.format('checked' if checked else ''))
 
         actions = []
 
@@ -93,9 +122,9 @@ def location_types_tab_view(request):
                 type_obj.name,
                 type_obj.icon or "—",
                 parent_names,
-                'Yes' if type_obj.can_store_inventory else 'No',
-                'Yes' if type_obj.can_store_samples else 'No',
-                'Yes' if type_obj.has_spaces else 'No',
+                get_checkbox_html(type_obj.can_store_inventory),
+                get_checkbox_html(type_obj.can_store_samples), 
+                get_checkbox_html(type_obj.has_spaces), 
                 grid_display, 
             ],
             'actions': [

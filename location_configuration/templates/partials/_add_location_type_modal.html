@@ -11,7 +11,37 @@
     <div class="modal-body">
       <form method="post" action="{% url 'location_configuration:types_tab' %}">
           {% csrf_token %}
-          {% include "partials/_form_fields.html" with form=form %}
+
+          {# Manually render Name and Icon fields #}
+          <div class="form-field">{{ form.name.label_tag }}{{ form.name }}</div>
+          <div class="form-field">{{ form.icon.label_tag }}{{ form.icon }}</div>
+
+          {# Manually render "Allowed Parents" #}
+          <div class="form-field">
+            <label>{{ form.allowed_parents.label }}</label>
+            <div class="checkbox-list">
+              {{ form.allowed_parents }}
+            </div>
+          </div>
+
+          {# Render boolean checkboxes with the new inline style #}
+          <div class="form-field-inline">
+            {{ form.can_store_inventory }}
+            <label for="{{ form.can_store_inventory.id_for_label }}">Stores Inventory</label>
+          </div>
+          <div class="form-field-inline">
+            {{ form.can_store_samples }}
+            <label for="{{ form.can_store_samples.id_for_label }}">Stores Samples</label>
+          </div>
+          <div class="form-field-inline">
+            {{ form.has_spaces }}
+            <label for="{{ form.has_spaces.id_for_label }}">Has Spaces</label>
+          </div>
+          
+          {# Manually render grid fields #}
+          <div class="form-field">{{ form.rows.label_tag }}{{ form.rows }}</div>
+          <div class="form-field">{{ form.columns.label_tag }}{{ form.columns }}</div>
+
           <div class="form-actions">
               <button type="submit" class="btn btn-green">Save</button>
           </div>

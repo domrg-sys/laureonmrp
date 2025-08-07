@@ -74,3 +74,39 @@ document.addEventListener('DOMContentLoaded', handleTabSlider);
 
 // Also run it if the browser window is resized
 window.addEventListener('resize', handleTabSlider);
+
+// Spaces Function
+
+function handleConditionalGridFields() {
+    // Find the relevant elements in the form
+    const hasSpacesCheckbox = document.getElementById('id_has_spaces');
+    const rowsInput = document.getElementById('id_rows');
+    const colsInput = document.getElementById('id_columns');
+
+    // If these elements don't exist on the page, do nothing.
+    if (!hasSpacesCheckbox || !rowsInput || !colsInput) {
+        return;
+    }
+
+    // This function will be called to update the state of the inputs
+    const toggleGridInputs = () => {
+        const isChecked = hasSpacesCheckbox.checked;
+        rowsInput.disabled = !isChecked;
+        colsInput.disabled = !isChecked;
+
+        // If the box is unchecked, clear the values
+        if (!isChecked) {
+            rowsInput.value = '';
+            colsInput.value = '';
+        }
+    };
+
+    // Run the function once on page load to set the initial state
+    toggleGridInputs();
+
+    // Add an event listener to run the function whenever the checkbox is clicked
+    hasSpacesCheckbox.addEventListener('change', toggleGridInputs);
+}
+
+// Ensure the script runs after the page has fully loaded
+document.addEventListener('DOMContentLoaded', handleConditionalGridFields);

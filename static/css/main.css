@@ -403,7 +403,6 @@ body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem;
 }
 
 .form-field-inline label {
@@ -433,14 +432,14 @@ body {
 }
 
 /* A single item within the checkbox list */
-.form-field .checkbox-list label {
+.modal-body .form-field .checkbox-list label {
+    border: none !important;
+    padding: 0 !important;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     font-weight: 400;
     margin-bottom: 0;
-    border: none;
-    padding: 0;
 }
 
 .form-field input[type="checkbox"] {

@@ -47,7 +47,6 @@ ICON_CHOICES = [
     ('room', 'Room'),
     ('door_front', 'Door'),
     ('shelves', 'Shelves'),
-    ('freezer', 'Freezer'),
     ('conveyor_belt', 'Conveyor Belt'),
     ('science', 'Laboratory'),
     ('biotech', 'Biotech'),

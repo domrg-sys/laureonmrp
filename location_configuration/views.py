@@ -59,8 +59,9 @@ class LocationTypeForm(forms.ModelForm):
     # Explicitly define the 'icon' field to ensure it becomes a dropdown.
     icon = forms.ChoiceField(
         choices=ICON_CHOICES,
-        required=False, # Make it optional
-        label="Icon"
+        required=False,
+        label="Icon",
+        widget=forms.Select(attrs={'id': 'icon-picker'})
     )
 
     class Meta:
@@ -68,7 +69,7 @@ class LocationTypeForm(forms.ModelForm):
         # The 'icon' field is now defined above, so it's handled.
         fields = ['name', 'icon', 'allowed_parents', 'can_store_inventory', 'can_store_samples', 'has_spaces', 'rows', 'columns']
         widgets = {
-            'allowed_parents': forms.CheckboxSelectMultiple(attrs={'class': 'checkbox-list'}),
+            'allowed_parents': forms.CheckboxSelectMultiple(),
         }
 
 # --- VIEW 2: For the "Location Types" Tab ---

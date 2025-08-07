@@ -110,3 +110,35 @@ function handleConditionalGridFields() {
 
 // Ensure the script runs after the page has fully loaded
 document.addEventListener('DOMContentLoaded', handleConditionalGridFields);
+
+//icon picker
+function initializeIconPicker() {
+    const iconPicker = document.getElementById('icon-picker');
+    
+    // If the icon picker element doesn't exist on the page, do nothing.
+    if (!iconPicker) {
+        return;
+    }
+
+    new TomSelect(iconPicker, {
+        plugins: ['grid_view'], // This plugin enables the grid layout for options.
+
+        render: {
+            // This function now only renders the icon for each option in the grid.
+            option: function(data, escape) {
+                return `<div class="grid-item">
+                          <span class="material-symbols-outlined">${escape(data.value)}</span>
+                        </div>`;
+            },
+            // This function now only renders the icon for the currently selected item.
+            item: function(data, escape) {
+                return `<div class="select-item">
+                          <span class="material-symbols-outlined">${escape(data.value)}</span>
+                        </div>`;
+            }
+        }
+    });
+}
+
+// The event listener at the bottom of the file stays the same.
+document.addEventListener('DOMContentLoaded', initializeIconPicker);

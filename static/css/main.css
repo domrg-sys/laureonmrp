@@ -294,6 +294,14 @@ body {
     color: var(--color-secondary-5);
 }
 
+.btn-icon-green {
+    color: var(--color-primary-2);
+}
+
+.btn-icon-green:hover {
+    color: var(--color-primary-1);
+}
+
 .btn-icon-disable {
     color: var(--color-gray-1);
     cursor: not-allowed;
@@ -321,16 +329,43 @@ body {
 .modal-content {
   position: relative;
   background-color: var(--color-primary-3);
-  padding: 2rem;
   border-radius: 8px;
   max-width: 500px;
   width: 90%;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-gray-1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-gray-5);
 }
 
 .modal-close {
   position: absolute;
   top: 8px;
   right: 8px;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--color-gray-1);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
 /* ---Table styles--- */

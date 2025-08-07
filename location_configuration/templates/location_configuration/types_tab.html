@@ -15,10 +15,10 @@
 
     <div class="table-toolbar">
         {% if perms.location_configuration.add_locationtype %}
-            <a href="#" class="btn btn-green">
+            <button type="button" class="btn btn-green" data-modal-target="#add-type-modal">
                 <span class="material-symbols-outlined">add</span>
-                <span>Add New Type</span>
-            </a>
+                <span>Add New Location Type</span>
+            </button>
         {% else %}
             <div class="btn btn-disable">
                 <span class="material-symbols-outlined">add</span>
@@ -31,4 +31,6 @@
         {# Render the generic data table #}
         {% include "partials/_data_table.html" %}
     </div>
+
+    {% include "partials/_add_location_type_modal.html" %}
 {% endblock %}

@@ -1,0 +1,21 @@
+{% load component_tags %}
+
+<div class="modal-overlay" id="add-type-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+        <h2 class="modal-title">Add New Location Type</h2>
+        <button class="modal-close btn-icon btn-icon-red" aria-label="Close modal">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{% url 'location_configuration:types_tab' %}">
+          {% csrf_token %}
+          {% include "partials/_form_fields.html" with form=form %}
+          <div class="form-actions">
+              <button type="submit" class="btn btn-green">Save</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>

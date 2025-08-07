@@ -1,7 +1,8 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import permission_required
 from django.urls import reverse
 from .models import Location, LocationType, LocationSpace
+from django import forms
 
 # This list defines the tabs for the entire "Location Configuration" section.
 TABS = [
@@ -38,10 +39,25 @@ def locations_tab_view(request):
     context = _prepare_tabs_context('locations')
     return render(request, 'location_configuration/locations_tab.html', context)
 
+# --- Form for LocationType ---
+class LocationTypeForm(forms.ModelForm):
+    class Meta:
+        model = LocationType
+        fields = ['name', 'icon', 'allowed_parents', 'can_store_inventory', 'can_store_samples', 'has_spaces', 'rows', 'columns']
+
 # --- VIEW 2: For the "Location Types" Tab ---
 @permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
 def location_types_tab_view(request):
+    if request.method == 'POST':
+        form = LocationTypeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('location_configuration:types_tab')
+    else:
+        form = LocationTypeForm()
+
     context = _prepare_tabs_context('types')
+    context['form'] = form
 
     context['table_headers'] = [
         'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',
@@ -83,8 +99,8 @@ def location_types_tab_view(request):
                 grid_display, 
             ],
             'actions': [
-                {'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-edit'},
-                {'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-delete'},
+                {'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-blue'},
+                {'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red'},
             ]
         }
         table_rows.append(row)

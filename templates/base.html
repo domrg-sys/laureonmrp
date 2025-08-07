@@ -1,0 +1,73 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Laureon MRP{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+
+    <!-- Universal Stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- Universal Site Header   -->
+    <header class="site-header">
+        <a href="{% url 'main_menu:main_menu' %}" class="logo-link">
+            <div class="logo">
+                <span class="logo-laureon">Laureon</span>
+                <span class="logo-mrp">MRP</span>
+            </div>
+        </a>
+
+        <div class="user-info">
+            {% if user.is_authenticated %}
+                <span class="current-user">Current User: {{ user.username }}</span>
+                <a href="#" class="btn-icon btn-icon-blue" title="Logout" aria-label="Logout">
+                    <span class="material-symbols-outlined">logout</span>
+                </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Main Content Area       -->
+    <main class="main-content">
+        <div class="content-card">
+            
+            <!-- Page Header inside the card -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    {% block page_title %}
+                        <!-- The title for each specific page goes here -->
+                    {% endblock %}
+                </h1>
+                <div class="page-actions">
+                    {% block page_actions %}
+                        <!-- Optional: Buttons like "Add New" can go here -->
+                    {% endblock %}
+                </div>
+            </div>
+
+            <!-- The main content for the page -->
+            <div class="page-content">
+                {% block content %}
+                {% endblock %}
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Global Elements -->
+
+    <script src="{% static 'js/main.js' %}" defer></script>
+</body>
+</html>

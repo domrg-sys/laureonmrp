@@ -1,0 +1,45 @@
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                {% for header in table_headers %}
+                    <th>{{ header }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_rows %}
+                <tr>
+                    {% for cell in row.cells %}
+                        <td>{{ cell }}</td>
+                    {% endfor %}
+                    
+                    {# This is the special column for action buttons #}
+                    {% if row.actions %}
+                        <td class="table-actions">
+                            {% for action in row.actions %}
+                                {# If the action has a URL, it's a clickable link #}
+                                {% if action.url %}
+                                    <a href="{{ action.url }}" class="btn-icon {{ action.class }}" title="{{ action.label }}">
+                                        <span class="material-symbols-outlined">{{ action.icon }}</span>
+                                    </a>
+                                {# Otherwise, it's a disabled span #}
+                                {% else %}
+                                    <span class="btn-icon {{ action.class }}" title="Permission Denied">
+                                        <span class="material-symbols-outlined">{{ action.icon }}</span>
+                                    </span>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="{{ table_headers|length }}" class="table-empty">
+                        No items to display.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

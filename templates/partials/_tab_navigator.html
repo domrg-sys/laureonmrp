@@ -1,0 +1,13 @@
+<nav class="tab-nav">
+    <ul>
+        {% for tab in tabs %}
+            <li>
+                <a href="{{ tab.url }}" class="tab-nav-item {% if tab.slug == active_tab %}is-active{% endif %}">
+                    {{ tab.label }}
+                </a>
+            </li>
+        {% endfor %}
+        
+        <li class="tab-nav-slider" aria-hidden="true"></li>
+    </ul>
+</nav>

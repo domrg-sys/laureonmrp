@@ -1,0 +1,94 @@
+from django.shortcuts import render
+from django.contrib.auth.decorators import permission_required
+from django.urls import reverse
+from .models import Location, LocationType, LocationSpace
+
+# This list defines the tabs for the entire "Location Configuration" section.
+TABS = [
+    {
+        'slug': 'locations',
+        'label': 'Locations',
+        'url_name': 'location_configuration:locations_tab'
+    },
+    {
+        'slug': 'types',
+        'label': 'Location Types',
+        'url_name': 'location_configuration:types_tab'
+    },
+]
+
+# --- A helper function to prepare the tabs ---
+def _prepare_tabs_context(active_tab_slug):
+    """
+    A helper to generate the context for the tabs, including the final URLs.
+    This avoids repeating the same logic in every view.
+    """
+    # This loop generates the final URLs for the tabs
+    for tab in TABS:
+        tab['url'] = reverse(tab['url_name'])
+    
+    return {
+        'tabs': TABS,
+        'active_tab': active_tab_slug,
+    }
+
+# --- VIEW 1: For the "Locations" Tab ---
+@permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
+def locations_tab_view(request):
+    context = _prepare_tabs_context('locations')
+    return render(request, 'location_configuration/locations_tab.html', context)
+
+# --- VIEW 2: For the "Location Types" Tab ---
+@permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
+def location_types_tab_view(request):
+    context = _prepare_tabs_context('types')
+
+    context['table_headers'] = [
+        'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',
+        'Stores Samples', 'Has Spaces', 'Grid', 'Actions'
+    ]
+
+    location_types = LocationType.objects.prefetch_related('allowed_parents').all()
+
+    table_rows = []
+    for type_obj in location_types:
+        parent_names = ", ".join([p.name for p in type_obj.allowed_parents.all()]) or "—"
+        if type_obj.rows and type_obj.columns:
+            grid_display = f"{type_obj.rows}x{type_obj.columns}"
+        else:
+            grid_display = "N/A"
+
+        actions = []
+
+        # Check if the user has the 'change' (edit) permission for the LocationType model
+        if request.user.has_perm('location_configuration.change_locationtype'):
+            actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-blue'})
+        else:
+            actions.append({'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-disabled'})
+
+        # Check if the user has the 'delete' permission for the LocationType model
+        if request.user.has_perm('location_configuration.delete_locationtype'):
+            actions.append({'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red'})
+        else:
+            actions.append({'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-disabled'})
+
+        row = {
+            'cells': [
+                type_obj.name,
+                type_obj.icon or "—",
+                parent_names,
+                'Yes' if type_obj.can_store_inventory else 'No',
+                'Yes' if type_obj.can_store_samples else 'No',
+                'Yes' if type_obj.has_spaces else 'No',
+                grid_display, 
+            ],
+            'actions': [
+                {'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-edit'},
+                {'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-delete'},
+            ]
+        }
+        table_rows.append(row)
+    
+    context['table_rows'] = table_rows
+
+    return render(request, 'location_configuration/types_tab.html', context)

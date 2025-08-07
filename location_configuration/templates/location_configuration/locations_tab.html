@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load component_tags %}
+
+{% block page_title %}
+    Location Configuration
+{% endblock %}
+
+{% block content %}
+    {# Use the new generic tag, passing in the context from the view #}
+    {% tab_navigator tabs=tabs active_tab=active_tab %}
+
+    <div class="tab-content">
+        <p>This is the content for the Locations tab.</p>
+    </div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load component_tags %}
+
+{% block page_title %}
+    Location Configuration
+{% endblock %}
+
+{# The page_actions block is now empty or removed #}
+{% block page_actions %}
+{% endblock %}
+
+{% block content %}
+    {# Render the tab navigator #}
+    {% tab_navigator tabs=tabs active_tab=active_tab %}
+
+    <div class="table-toolbar">
+        {% if perms.location_configuration.add_locationtype %}
+            <a href="#" class="btn btn-green">
+                <span class="material-symbols-outlined">add</span>
+                <span>Add New Type</span>
+            </a>
+        {% else %}
+            <div class="btn btn-disable">
+                <span class="material-symbols-outlined">add</span>
+                <span>Add New Type</span>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-content">
+        {# Render the generic data table #}
+        {% include "partials/_data_table.html" %}
+    </div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'main_menu/main_menu_styles.css' %}">
+{% endblock %}
+
+{% block page_title %}
+    Main Menu
+{% endblock %}
+
+{% block content %}
+    <div class="main_menu-grid">
+
+        {# Administration Button #}
+        {% if perms.administration.view_administration_page %}
+            <a href="{% url 'administration:administration' %}" class="btn-menu btn-blue">
+                <span class="material-symbols-outlined">admin_panel_settings</span>
+                <span>Administration</span>
+            </a>
+        {% else %}
+            <div class="btn-menu btn-disable">
+                <span class="material-symbols-outlined">lock</span>
+                <span>Administration</span>
+            </div>
+        {% endif %}
+
+        {# Inventory Control Button #}
+        {% if perms.inventory_control.view_inventorycontrol_page %}
+            <a href="{% url 'inventory_control:inventory_control' %}" class="btn-menu btn-blue">
+                <span class="material-symbols-outlined">inventory_2</span>
+                <span>Inventory Control</span>
+            </a>
+        {% else %}
+            <div class="btn-menu btn-disable">
+                <span class="material-symbols-outlined">lock</span>
+                <span>Inventory Control</span>
+            </div>
+        {% endif %}
+
+        {# Operations Management Button #}
+        {% if perms.operations_management.view_operationsmanagement_page %}
+            <a href="{% url 'operations_management:operations_management' %}" class="btn-menu btn-blue">
+                <span class="material-symbols-outlined">assignment</span>
+                <span>Operations Management</span>
+            </a>
+        {% else %}
+            <div class="btn-menu btn-disable">
+                <span class="material-symbols-outlined">lock</span>
+                <span>Operations Management</span>
+            </div>
+        {% endif %}
+
+        {# Location Configuration Button #}
+        {% if perms.location_configuration.view_locationconfiguration_page %}
+            <a href="{% url 'location_configuration:location_configuration' %}" class="btn-menu btn-blue">
+                <span class="material-symbols-outlined">warehouse</span>
+                <span>Location Configuration</span>
+            </a>
+        {% else %}
+            <div class="btn-menu btn-disable">
+                <span class="material-symbols-outlined">lock</span>
+                <span>Location Configuration</span>
+            </div>
+        {% endif %}
+
+        {# Sample Control Button #}
+        {% if perms.sample_control.view_samplecontrol_page %}
+            <a href="{% url 'sample_control:sample_control' %}" class="btn-menu btn-blue">
+                <span class="material-symbols-outlined">labs</span>
+                <span>Sample Control</span>
+            </a>
+        {% else %}
+            <div class="btn-menu btn-disable">
+                <span class="material-symbols-outlined">lock</span>
+                <span>Sample Control</span>
+            </div>
+        {% endif %}
+
+        {# Shop Floor Button #}
+        {% if perms.shop_floor.view_shopfloor_page %}
+            <a href="{% url 'shop_floor:shop_floor' %}" class="btn-menu btn-blue">
+                <span class="material-symbols-outlined">forklift</span>
+                <span>Shop Floor</span>
+            </a>
+        {% else %}
+            <div class="btn-menu btn-disable">
+                <span class="material-symbols-outlined">lock</span>
+                <span>Shop Floor</span>
+            </div>
+        {% endif %}
+
+    </div>
+{% endblock %}

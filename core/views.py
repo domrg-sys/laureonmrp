@@ -3,6 +3,7 @@ from django.forms.utils import ErrorDict
 from django.shortcuts import redirect
 from django.views.generic.edit import FormMixin
 from django.db.models.query import QuerySet
+from django.forms import ModelMultipleChoiceField
 
 class FormHandlingMixin(FormMixin):
     """
@@ -29,30 +30,25 @@ class FormHandlingMixin(FormMixin):
         If the form is invalid, store the form data and errors in the session
         and redirect to the success URL.
         """
-        form_data = form.data.copy()
-        for name, value in form_data.items():
-            # --- THIS IS THE CORRECTED SECTION ---
-            # We must check if the key from the POST data is a real field
-            # on the form before trying to access it. This prevents a KeyError
-            # for items like 'csrfmiddlewaretoken'.
-            if name in form.fields and isinstance(form.fields[name].initial, QuerySet):
-                # getlist is used to handle multiple selections for ManyToManyFields
-                form_data.setlist(name, [obj.pk for obj in value])
-
+        # Store the name of the form class that failed.
+        self.request.session['failed_form_class'] = self.get_form_class().__name__
+        
         self.request.session['form_errors'] = form.errors.as_json()
-        self.request.session['form_data'] = form_data
+        self.request.session['form_data'] = form.data
         
         return redirect(self.get_success_url())
 
     def get_form_kwargs(self):
         """
         Return the keyword arguments for instantiating the form.
-        On a GET request, it checks the session for previous form data.
+        On a GET request, it checks the session for previous form data if
+        this form was the one that previously failed.
         """
         kwargs = super().get_form_kwargs()
         
-        # On a GET request, check for and load previous data from the session
-        if self.request.method == 'GET':
+        # On GET, check if this form class was the one that failed.
+        failed_form_class = self.request.session.get('failed_form_class')
+        if self.request.method == 'GET' and failed_form_class == self.get_form_class().__name__:
             kwargs['data'] = self.request.session.pop('form_data', None)
         
         return kwargs
@@ -60,15 +56,20 @@ class FormHandlingMixin(FormMixin):
     def get_context_data(self, **kwargs):
         """
         Insert the form into the context dictionary. If there were errors
-        in the session, they are loaded into the form instance.
+        in the session for this specific form, they are loaded into the form instance.
         """
         context = super().get_context_data(**kwargs)
         form = context.get('form')
         
         if form:
-            form_errors = self.request.session.pop('form_errors', None)
-            if form_errors:
-                errors = json.loads(form_errors)
-                form._errors = ErrorDict(errors)
+            failed_form_class = self.request.session.get('failed_form_class')
+            # Only load errors if they belong to this form.
+            if failed_form_class == type(form).__name__:
+                form_errors = self.request.session.pop('form_errors', None)
+                # Clear the flag since we're consuming the error state.
+                self.request.session.pop('failed_form_class', None)
+                if form_errors:
+                    errors = json.loads(form_errors)
+                    form._errors = ErrorDict(errors)
         
         return context

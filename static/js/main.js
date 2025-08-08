@@ -12,30 +12,15 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeIconPicker(); // Initialize the picker first so the instance is ready.
   initializeModals();
   handleTabSlider();
-  // We now target the specific 'add' modal for the initial setup.
+  
+  // Initialize conditional fields for the 'add' modal.
   const addModal = document.querySelector('#add-type-modal');
   if (addModal) {
     handleConditionalGridFields(addModal);
   }
   
-  // Initialize the generic edit modal for location types
-  initializeEditModal('.edit-type-btn', '#edit-type-modal', (form, data) => {
-    // This is a callback function to handle logic specific to the location type edit modal
-    
-    // Set the hidden location_type_id field
-    const typeIdField = form.querySelector('input[name="location_type_id"]');
-    if (typeIdField) {
-        typeIdField.value = data['type-id'];
-    }
-
-    // Handle the icon picker
-    if (editIconPickerInstance) {
-        editIconPickerInstance.setChoiceByValue(data['type-icon']);
-    }
-    
-    // Handle conditional fields
-    handleConditionalGridFields(form);
-  });
+  // Set up the edit buttons to open the modal and populate it with data.
+  initializeEditTypeButtons();
 });
 
 
@@ -43,57 +28,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /**
  * A custom function to manually clear all fields in a form.
- * This replaces form.reset() to avoid resetting to server-rendered error values.
+ * This is more robust than form.reset() for our use case.
  * @param {HTMLFormElement} form The form element to clear.
  */
 const clearForm = (form) => {
   const elements = form.elements;
 
-  // Loop through all form elements
   for (let i = 0; i < elements.length; i++) {
     const field = elements[i];
     const type = field.type.toLowerCase();
     const tagName = field.tagName.toLowerCase();
 
-    // Skip hidden fields (like CSRF token), buttons, and file inputs
+    // Skip fields that shouldn't be cleared automatically
     if (type === 'hidden' || type === 'submit' || type === 'button' || type === 'reset' || type === 'file') {
       continue;
     }
 
-    // Clear text inputs, textareas, and other text-like fields
-    if (tagName === 'textarea' || (tagName === 'input' && ['text', 'number', 'password', 'email', 'url', 'tel'].includes(type))) {
+    if (type === 'checkbox' || type === 'radio') {
+      field.checked = false;
+    } else if (tagName === 'select' && !field.classList.contains('js-choice-icon-picker')) {
+      field.selectedIndex = -1; 
+    } else {
       field.value = '';
     }
-    // Uncheck checkboxes and radio buttons
-    else if (type === 'checkbox' || type === 'radio') {
-      field.checked = false;
-    }
-    // Reset select fields that are NOT the custom icon picker
-    else if (tagName === 'select' && !field.classList.contains('js-choice-icon-picker')) {
-      field.selectedIndex = -1; // Or 0 to select the first option
-    }
   }
 
-    // Remove the form error summary element
-    const errorSummary = form.querySelector('.form-error-summary');
-    if (errorSummary) {
-        errorSummary.remove();
-    }
+  // Remove any existing error messages
+  const errorSummary = form.querySelector('.form-error-summary');
+  if (errorSummary) errorSummary.remove();
+  form.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
+  form.querySelectorAll('input, select').forEach(el => el.disabled = false);
 
-    // Remove the .has-error class from all form fields
-    const errorFields = form.querySelectorAll('.has-error');
-    errorFields.forEach((field) => {
-        field.classList.remove('has-error');
-    });
-
-
-  // Finally, specifically reset the Choices.js icon picker instance
-  if (iconPickerInstance) {
-    iconPickerInstance.setChoiceByValue('warehouse');
+  // Specifically reset the Choices.js instances if they exist
+  if (form.closest('#add-type-modal') && iconPickerInstance) {
+    iconPickerInstance.setChoiceByValue('warehouse'); 
   }
-
-  if (editIconPickerInstance) {
-    editIconPickerInstance.setChoiceByValue('warehouse');
+  if (form.closest('#edit-type-modal') && editIconPickerInstance) {
+    editIconPickerInstance.setChoiceByValue('warehouse'); 
   }
 };
 
@@ -102,33 +73,27 @@ const clearForm = (form) => {
  */
 function initializeModals() {
   const openModal = ($el) => {
-    // This function is only called on a manual click, so we should always clear the form.
-    const form = $el.querySelector('form');
-    if (form) {
-        clearForm(form);
-    }
-    // Finally, show the modal.
     $el.classList.add("is-active");
   };
 
   const closeModal = ($el) => {
     $el.classList.remove("is-active");
-    const form = $el.querySelector('form');
-    if (form) {
-        clearForm(form);
-    }
   };
 
-  // Setup triggers to open modals on click.
+  // Setup triggers to open modals on click (for non-edit buttons)
   document.querySelectorAll("[data-modal-target]").forEach(($trigger) => {
     const modalId = $trigger.dataset.modalTarget;
     const $target = document.querySelector(modalId);
     if ($target) {
-      $trigger.addEventListener("click", () => openModal($target));
+      $trigger.addEventListener("click", () => {
+        const form = $target.querySelector('form');
+        if (form) clearForm(form);
+        openModal($target);
+      });
     }
   });
 
-  // Setup triggers to close modals and handle initial open state.
+  // Setup triggers to close modals.
   document.querySelectorAll(".modal-overlay").forEach(($overlay) => {
     $overlay.addEventListener("click", (event) => {
       if (event.target.classList.contains('modal-overlay') || event.target.closest('.modal-close')) {
@@ -136,10 +101,9 @@ function initializeModals() {
       }
     });
 
-    // Check on page load if a modal should be open (e.g., due to form errors).
-    // This happens outside the click-based openModal function.
+    // Check on page load if a modal should be open due to form errors.
     if ($overlay.hasAttribute('data-is-open-on-load')) {
-        $overlay.classList.add('is-active');
+        openModal($overlay);
     }
   });
 }
@@ -169,8 +133,7 @@ function handleTabSlider() {
 
 /**
  * Handles the conditional logic for enabling/disabling the grid input fields.
- * This is now more generic and works on any container element passed to it.
- * @param {HTMLElement} container The container element (e.g., a modal).
+ * @param {HTMLElement} container The container element (e.g., a modal's form).
  */
 function handleConditionalGridFields(container) {
     const hasSpacesCheckbox = container.querySelector('input[name="has_spaces"]');
@@ -198,11 +161,10 @@ function handleConditionalGridFields(container) {
  * Initializes the Choices.js icon picker and stores its instance.
  */
 function initializeIconPicker() {
-    const iconPickerElement = document.querySelector('#add-type-modal .js-choice-icon-picker');
-
-    if (iconPickerElement) {
-        // Create the Choices instance and store it in our global variable.
-        iconPickerInstance = new Choices(iconPickerElement, {
+    const initChoices = (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return null;
+        return new Choices(element, {
             searchEnabled: false,
             callbackOnCreateTemplates: function (template) {
                 return {
@@ -223,80 +185,56 @@ function initializeIconPicker() {
                 };
             },
         });
-    }
+    };
 
-    const editIconPickerElement = document.querySelector('#edit-type-modal .js-choice-icon-picker');
-
-    if (editIconPickerElement) {
-        // Create the Choices instance and store it in our global variable.
-        editIconPickerInstance = new Choices(editIconPickerElement, {
-            searchEnabled: false,
-            callbackOnCreateTemplates: function (template) {
-                return {
-                    item: ({ classNames }, data) => {
-                        return template(`
-                            <div class="${classNames.item}" data-item data-id="${data.id}" data-value="${data.value}">
-                                <span class="material-symbols-outlined">${data.value}</span>
-                            </div>
-                        `);
-                    },
-                    choice: ({ classNames }, data) => {
-                         return template(`
-                            <div class="${classNames.item} ${classNames.itemChoice} ${data.disabled ? classNames.itemDisabled : ''} ${data.highlighted ? classNames.highlightedState : ''}" data-select-text="" data-choice data-id="${data.id}" data-value="${data.value}" role="option">
-                                <span class="material-symbols-outlined">${data.value}</span>
-                            </div>
-                        `);
-                    },
-                };
-            },
-        });
-    }
+    iconPickerInstance = initChoices('#add-type-modal .js-choice-icon-picker');
+    editIconPickerInstance = initChoices('#edit-type-modal .js-choice-icon-picker');
 }
 
 /**
- * Initializes edit modals.
- * @param {string} buttonSelector - The selector for the edit buttons.
- * @param {string} modalSelector - The selector for the modal.
- * @param {function} callback - A callback function to run after populating the form.
+ * Sets up the edit buttons to open the modal and populate it with data.
  */
-function initializeEditModal(buttonSelector, modalSelector, callback) {
-    const editButtons = document.querySelectorAll(buttonSelector);
-    const modal = document.querySelector(modalSelector);
-
-    if (!modal || editButtons.length === 0) {
-        return;
-    }
+function initializeEditTypeButtons() {
+    const editButtons = document.querySelectorAll('.edit-type-btn');
+    const modal = document.querySelector('#edit-type-modal');
+    if (!modal) return;
 
     const form = modal.querySelector('form');
 
     editButtons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            clearForm(form); 
+
             const data = JSON.parse(button.dataset.data);
 
-            // Populate form fields based on data attributes
-            for (const key in data) {
-                const field = form.querySelector(`[name="${key}"]`);
-                if (field) {
-                    if (field.type === 'checkbox') {
-                        field.checked = data[key];
-                    } else if (Array.isArray(data[key])) { // For multi-select fields like allowed_parents
-                        data[key].forEach(value => {
-                            const option = form.querySelector(`input[name="${key}"][value="${value}"]`);
-                            if (option) {
-                                option.checked = true;
-                            }
-                        });
-                    }
-                    else {
-                        field.value = data[key];
-                    }
-                }
+            // Populate form fields
+            form.querySelector('input[name="location_type_id"]').value = data['location_type_id'];
+            form.querySelector('input[name="name"]').value = data.name;
+            if(editIconPickerInstance) editIconPickerInstance.setChoiceByValue(data.icon);
+
+            // Check the correct checkboxes for allowed_parents
+            if (data.allowed_parents) {
+                data.allowed_parents.forEach(parentId => {
+                    const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
             }
 
-            // Run the callback for modal-specific logic
-            if (callback) {
-                callback(form, data);
+            form.querySelector('input[name="can_store_inventory"]').checked = data.can_store_inventory;
+            form.querySelector('input[name="can_store_samples"]').checked = data.can_store_samples;
+            form.querySelector('input[name="has_spaces"]').checked = data.has_spaces;
+            form.querySelector('input[name="rows"]').value = data.rows;
+            form.querySelector('input[name="columns"]').value = data.columns;
+
+            // Conditionally disable fields if the type is in use
+            if (data['is-in-use']) {
+                form.querySelector('input[name="name"]').disabled = true;
+                form.querySelector('input[name="has_spaces"]').disabled = true;
             }
+
+            // Now that the modal is populated, run the conditional logic for grid fields.
+            handleConditionalGridFields(modal);
 
             modal.classList.add('is-active');
         });

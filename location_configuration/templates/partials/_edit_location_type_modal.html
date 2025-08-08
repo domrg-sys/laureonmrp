@@ -1,7 +1,7 @@
 {% load component_tags %}
 {% load form_tags %}
 
-<div class="modal-overlay" id="edit-type-modal" {% if edit_form.errors %}data-is-open-on-load{% endif %}>
+<div class="modal-overlay" id="edit-type-modal" {% if has_errors %}data-is-open-on-load{% endif %}>
   <div class="modal-content">
     <div class="modal-header">
         <h2 class="modal-title">Edit Location Type</h2>

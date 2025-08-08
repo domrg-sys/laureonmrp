@@ -32,6 +32,7 @@
         {% include "partials/_data_table.html" %}
     </div>
 
-    {% include "partials/_add_location_type_modal.html" %}
-    {% include "partials/_edit_location_type_modal.html" %}
+    {# Pass the correct error flag to each modal template #}
+    {% include "partials/_add_location_type_modal.html" with form=form has_errors=add_form_has_errors %}
+    {% include "partials/_edit_location_type_modal.html" with edit_form=edit_form has_errors=edit_form_has_errors %}
 {% endblock %}

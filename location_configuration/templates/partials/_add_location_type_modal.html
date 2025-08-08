@@ -1,7 +1,7 @@
 {% load component_tags %}
 {% load form_tags %}
 
-<div class="modal-overlay" id="add-type-modal" {% if form.errors %}data-is-open-on-load{% endif %}>
+<div class="modal-overlay" id="add-type-modal" {% if has_errors %}data-is-open-on-load{% endif %}>
   <div class="modal-content">
     <div class="modal-header">
         <h2 class="modal-title">Add New Location Type</h2>

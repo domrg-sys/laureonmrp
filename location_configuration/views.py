@@ -2,7 +2,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import TemplateView
 from django.urls import reverse, reverse_lazy
 from django.utils.safestring import mark_safe
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 import json
 
 from core.views import FormHandlingMixin
@@ -44,16 +44,16 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('types'))
 
-        context['form_had_errors'] = bool(context.get('form').errors)
-
+        # If the 'edit_form' isn't already in the context (from a failed POST),
+        # create a fresh, unbound instance of it.
+        if 'edit_form' not in context:
+            context['edit_form'] = EditLocationTypeForm()
+            
         context['table_headers'] = [
             'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',
             'Stores Samples', 'Has Spaces', 'Grid', 'Actions'
         ]
         context['table_rows'] = self._get_table_rows()
-
-        if 'edit_form' not in kwargs:
-            context['edit_form'] = EditLocationTypeForm()
 
         return context
 
@@ -63,17 +63,18 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
             instance = get_object_or_404(LocationType, pk=request.POST.get('location_type_id'))
             form = EditLocationTypeForm(request.POST, instance=instance)
             if form.is_valid():
-                return self.form_valid(form)
+                form.save()
+                return redirect(self.get_success_url())
             else:
-                # If the form is invalid, re-render the page with the form
-                # This ensures the correct, filtered dropdowns are shown
-                context = self.get_context_data(edit_form=form)
+                # If the form is invalid, re-render the page with the invalid form
+                # so the user can see the errors in the modal.
+                context = self.get_context_data(edit_form=form, edit_form_has_errors=True)
                 return self.render_to_response(context)
         else: #This is an add form submission
             return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
-        """ This method is called when the form is successfully validated. """
+        """ This method is called when the ADD form is successfully validated. """
         form.save()
         return super().form_valid(form)
 
@@ -99,7 +100,7 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
                     'label': 'Edit',
                     'class': 'btn-icon-blue edit-type-btn',
                     'data': json.dumps({
-                        'type-id': type_obj.pk,
+                        'location_type_id': type_obj.pk,
                         'name': type_obj.name,
                         'icon': type_obj.icon,
                         'allowed_parents': [p.pk for p in type_obj.allowed_parents.all()],

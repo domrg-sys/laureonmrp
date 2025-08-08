@@ -2,7 +2,7 @@
  * Main entry point for all JavaScript on the site.
  */
 document.addEventListener("DOMContentLoaded", () => {
-  initializeModals();
+  initializeModalClosing();
   handleTabSlider();
 });
 
@@ -10,41 +10,21 @@ document.addEventListener("DOMContentLoaded", () => {
 // --- FUNCTION DEFINITIONS ---
 
 /**
- * Sets up all modal open/close triggers.
+ * Sets up triggers to CLOSE any active modal.
+ * This is a generic service for the whole site.
  */
-function initializeModals() {
-  const openModal = ($el) => {
-    $el.classList.add("is-active");
-  };
-
+function initializeModalClosing() {
   const closeModal = ($el) => {
     $el.classList.remove("is-active");
   };
 
-  // Setup triggers to open modals on click
-  document.querySelectorAll("[data-modal-target]").forEach(($trigger) => {
-    const modalId = $trigger.dataset.modalTarget;
-    const $target = document.querySelector(modalId);
-    if ($target) {
-      $trigger.addEventListener("click", () => {
-        // Note: The form clearing logic is now handled by the app-specific JS
-        openModal($target);
-      });
-    }
-  });
-
-  // Setup triggers to close modals.
   document.querySelectorAll(".modal-overlay").forEach(($overlay) => {
+    // Add listener to the overlay background and the 'X' button
     $overlay.addEventListener("click", (event) => {
       if (event.target.classList.contains('modal-overlay') || event.target.closest('.modal-close')) {
         closeModal($overlay);
       }
     });
-
-    // Check on page load if a modal should be open due to form errors.
-    if ($overlay.hasAttribute('data-is-open-on-load')) {
-        openModal($overlay);
-    }
   });
 }
 

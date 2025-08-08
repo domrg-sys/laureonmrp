@@ -95,6 +95,9 @@ function initializeIconPicker() {
 
     if (iconPickerElement) {
         const choices = new Choices(iconPickerElement, {
+            placeholder: true,
+            placeholderValue: 'Choose an icon...',
+            searchEnabled: false,
             callbackOnCreateTemplates: function (template) {
                 return {
                     item: ({ classNames }, data) => {

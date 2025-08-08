@@ -41,7 +41,6 @@ def locations_tab_view(request):
     return render(request, 'location_configuration/locations_tab.html', context)
 
 ICON_CHOICES = [
-    ('', '---------'),
     ('warehouse', 'Warehouse'),
     ('factory', 'Factory'),
     ('room', 'Room'),
@@ -103,6 +102,8 @@ def location_types_tab_view(request):
         def get_checkbox_html(checked):
             return mark_safe('<input type="checkbox" disabled {}>'.format('checked' if checked else ''))
 
+        icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
+
         actions = []
 
         # Check if the user has the 'change' (edit) permission for the LocationType model
@@ -120,7 +121,7 @@ def location_types_tab_view(request):
         row = {
             'cells': [
                 type_obj.name,
-                type_obj.icon or "—",
+                icon_html,
                 parent_names,
                 get_checkbox_html(type_obj.can_store_inventory),
                 get_checkbox_html(type_obj.can_store_samples), 

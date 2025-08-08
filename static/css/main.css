@@ -117,7 +117,7 @@ body {
 }
 
 .material-symbols-outlined {
-  vertical-align: bottom;
+  vertical-align: middle; /* Aligns icons nicely with text */
   line-height: inherit;
 }
 
@@ -425,6 +425,15 @@ body {
     color: var(--color-gray-3);
 }
 
+/* --- Universal Checkbox Styling --- */
+input[type="checkbox"] {
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--color-secondary-6);
+    vertical-align: middle; /* Ensures consistent alignment */
+}
+
+
 /* Container for the list of checkboxes from a ManyToManyField */
 .checkbox-list {
     display: grid;
@@ -445,12 +454,6 @@ body {
     gap: 0.5rem;
     font-weight: 400;
     margin-bottom: 0;
-}
-
-.form-field input[type="checkbox"] {
-    width: 1.15rem;
-    height: 1.15rem;
-    accent-color: var(--color-secondary-6);
 }
 
 .form-field .help-text {
@@ -511,4 +514,71 @@ body {
     text-align: center;
     padding: 2rem;
     color: var(--color-gray-3);
+}
+
+
+/* --- Choices.js Icon Picker Customization --- */
+
+.choices {
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.choices__inner {
+    width: 100%;
+    padding: 0.5rem 1rem !important;
+    border: 1px solid var(--color-gray-2);
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    background-color: var(--color-primary-3);
+    box-sizing: border-box;
+    min-height: auto;
+    display: flex;
+    align-items: center;     /* Vertically centers content */
+    justify-content: center; /* Horizontally centers content */
+}
+
+/* Adds the blue focus ring to match other inputs when active */
+.choices.is-open .choices__inner {
+    border-color: var(--color-secondary-5);
+    box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.3);
+}
+
+.choices__list--dropdown {
+    border: 1px solid var(--color-gray-2) !important;
+}
+
+/* --- Styles for the Dropdown Grid --- */
+.choices__list--dropdown .choices__list {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.choices__item--choice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    cursor: pointer;
+    font-size: 2.5rem;
+    min-width: 48px;
+    text-align: center;
+}
+
+/* --- Styles for Placeholder and Selected Item --- */
+
+.choices__placeholder {
+    opacity: 1;
+    color: var(--color-gray-3);
+}
+
+.choices__inner .choices__item--selectable {
+    font-size: 1.75rem;
+    padding: 0;
+    margin: 0;
 }

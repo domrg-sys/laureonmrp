@@ -14,7 +14,7 @@ class LocationConfigurationAccess(models.Model):
 class LocationType(models.Model):
     name = models.CharField(max_length=100, unique=True)
     icon = models.CharField(max_length=100, blank=True, help_text="e.g., 'warehouse', 'room', 'freezer'")
-    allowed_parents = models.ManyToManyField('self', blank=True, symmetrical=False)
+    allowed_parents = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='allowed_children')
     can_store_inventory = models.BooleanField(default=False)
     can_store_samples = models.BooleanField(default=False)
     has_spaces = models.BooleanField(default=False)
@@ -24,11 +24,24 @@ class LocationType(models.Model):
     def __str__(self):
         return self.name
     
+    def get_all_descendants(self):
+        """
+        Recursively finds all descendant types for the current instance.
+        This is used to prevent circular dependencies in forms.
+        """
+        descendants = set()
+        children = self.allowed_children.all()
+        for child in children:
+            if child not in descendants:
+                descendants.add(child)
+                descendants.update(child.get_all_descendants())
+        return descendants
+
     def clean(self):
         """
         Ensures the integrity of the LocationType hierarchy.
         """
-        # A type cannot be its own parent. The check requires self.pk to exist.
+        # A type cannot be its own parent.
         if self.pk and self.allowed_parents.filter(pk=self.pk).exists():
             raise ValidationError("A location type cannot be its own parent.")
         
@@ -39,16 +52,6 @@ class LocationType(models.Model):
                 if parent in descendants:
                     raise ValidationError(f"Circular dependency detected: You cannot set '{parent.name}' as a parent, because it is a descendant of this location type.")
 
-    def get_all_descendants(self):
-        """
-        Recursively queries the database to find all descendant types.
-        """
-        descendants = set()
-        children = LocationType.objects.filter(allowed_parents=self)
-        for child in children:
-            descendants.add(child)
-            descendants.update(child.get_all_descendants())
-        return descendants
 
 class Location(models.Model):
     name = models.CharField(max_length=100)
@@ -68,9 +71,15 @@ class Location(models.Model):
 
         # Prevents nesting a location under one of its own descendants.
         if self.parent:
-            descendants = self.get_all_descendants()
-            if self.parent in descendants:
-                raise ValidationError(f"Circular dependency detected: You cannot set '{self.parent.name}' as the parent, because it is a descendant of this location.")
+            # Simple check to prevent immediate circular reference
+            if self.parent == self:
+                 raise ValidationError("A location cannot be its own parent.")
+            # Deeper check for multi-level circular reference
+            ancestor = self.parent
+            while ancestor is not None:
+                if ancestor == self:
+                    raise ValidationError("Circular dependency detected: You cannot set a location's parent to one of its own descendants.")
+                ancestor = ancestor.parent
         
         # Enforces the allowed parent types defined in the LocationType model.
         if self.parent:

@@ -12,7 +12,11 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeIconPicker(); // Initialize the picker first so the instance is ready.
   initializeModals();
   handleTabSlider();
-  handleConditionalGridFields();
+  // We now target the specific 'add' modal for the initial setup.
+  const addModal = document.querySelector('#add-type-modal');
+  if (addModal) {
+    handleConditionalGridFields(addModal);
+  }
   initializeEditTypeButtons();
 });
 
@@ -147,11 +151,13 @@ function handleTabSlider() {
 
 /**
  * Handles the conditional logic for enabling/disabling the grid input fields.
+ * This is now more generic and works on any container element passed to it.
+ * @param {HTMLElement} container The container element (e.g., a modal).
  */
-function handleConditionalGridFields() {
-    const hasSpacesCheckbox = document.getElementById('id_has_spaces');
-    const rowsInput = document.getElementById('id_rows');
-    const colsInput = document.getElementById('id_columns');
+function handleConditionalGridFields(container) {
+    const hasSpacesCheckbox = container.querySelector('input[name="has_spaces"]');
+    const rowsInput = container.querySelector('input[name="rows"]');
+    const colsInput = container.querySelector('input[name="columns"]');
 
     if (!hasSpacesCheckbox || !rowsInput || !colsInput) return;
 
@@ -238,11 +244,11 @@ function initializeEditTypeButtons() {
     if (!modal) return;
 
     const form = modal.querySelector('form');
-    const nameInput = form.querySelector('#id_name');
 
     editButtons.forEach(button => {
         button.addEventListener('click', () => {
             const data = JSON.parse(button.dataset.data);
+            const nameInput = form.querySelector('#id_name');
 
             // Conditionally disable the name field based on the data attribute
             if (data['is-in-use']) {
@@ -253,7 +259,7 @@ function initializeEditTypeButtons() {
 
             // Populate form fields
             form.querySelector('#id_location_type_id').value = data['type-id'];
-            form.querySelector('#id_name').value = data['type-name'];
+            nameInput.value = data['type-name'];
             editIconPickerInstance.setChoiceByValue(data['type-icon']);
 
             // Clear all checkboxes first
@@ -276,6 +282,9 @@ function initializeEditTypeButtons() {
             form.querySelector('#id_has_spaces').checked = data['has-spaces'];
             form.querySelector('#id_rows').value = data.rows;
             form.querySelector('#id_columns').value = data.columns;
+
+            // Now that the modal is populated, run the conditional logic for grid fields.
+            handleConditionalGridFields(modal);
 
             modal.classList.add('is-active');
         });

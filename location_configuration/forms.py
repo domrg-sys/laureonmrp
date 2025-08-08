@@ -1,5 +1,5 @@
 from django import forms
-from .models import LocationType
+from .models import LocationType, Location
 
 ICON_CHOICES = [
     # --- Buildings & Rooms ---
@@ -72,16 +72,33 @@ class LocationTypeForm(forms.ModelForm):
 class EditLocationTypeForm(LocationTypeForm):
     """
     A form for editing an existing LocationType.
-    It inherits from the main form but makes the 'name' field readonly
-    if the location type is in use.
+    It inherits from the main form and applies conditional logic to its fields.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         instance = kwargs.get('instance')
 
-        # If the instance exists and has related locations, disable the name field
-        if instance and instance.pk and instance.location_set.exists():
-            self.fields['name'].disabled = True
+        if instance and instance.pk:
+            # --- START: LOGIC TO HIDE INVALID PARENTS ---
+            
+            # 1. Get all descendants of the current location type.
+            descendants = instance.get_all_descendants()
+            
+            # 2. Create a set of IDs to exclude: the instance itself and all its descendants.
+            ids_to_exclude = {instance.pk} | {desc.pk for desc in descendants}
+            
+            # 3. Filter the queryset for the 'allowed_parents' field.
+            self.fields['allowed_parents'].queryset = LocationType.objects.exclude(pk__in=ids_to_exclude)
+
+            # --- END: LOGIC TO HIDE INVALID PARENTS ---
+
+            # Check if the location type is in use by any location.
+            is_in_use = instance.location_set.exists()
+
+            if is_in_use:
+                # If it's in use, disable the name and has_spaces fields.
+                self.fields['name'].disabled = True
+                self.fields['has_spaces'].disabled = True
 
     def clean_name(self):
         # If the name field is disabled, its value won't be in cleaned_data.
@@ -89,3 +106,9 @@ class EditLocationTypeForm(LocationTypeForm):
         if self.fields['name'].disabled:
             return self.instance.name
         return self.cleaned_data.get('name')
+
+    def clean_has_spaces(self):
+        # If the 'has_spaces' field is disabled, return its original value.
+        if self.fields['has_spaces'].disabled:
+            return self.instance.has_spaces
+        return self.cleaned_data.get('has_spaces')

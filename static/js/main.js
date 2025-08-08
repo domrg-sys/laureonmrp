@@ -62,10 +62,10 @@ const clearForm = (form) => {
  */
 function initializeModals() {
   const openModal = ($el) => {
+    // This function is only called on a manual click, so we should always clear the form.
     const form = $el.querySelector('form');
     if (form) {
-      // Use our new custom function to reliably clear the form
-      clearForm(form);
+        clearForm(form);
     }
     // Finally, show the modal.
     $el.classList.add("is-active");
@@ -84,7 +84,7 @@ function initializeModals() {
     }
   });
 
-  // Setup triggers to close modals.
+  // Setup triggers to close modals and handle initial open state.
   document.querySelectorAll(".modal-overlay").forEach(($overlay) => {
     $overlay.addEventListener("click", (event) => {
       if (event.target.classList.contains('modal-overlay') || event.target.closest('.modal-close')) {
@@ -93,6 +93,7 @@ function initializeModals() {
     });
 
     // Check on page load if a modal should be open (e.g., due to form errors).
+    // This happens outside the click-based openModal function.
     if ($overlay.hasAttribute('data-is-open-on-load')) {
         $overlay.classList.add('is-active');
     }

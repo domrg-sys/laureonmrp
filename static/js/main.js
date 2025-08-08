@@ -88,49 +88,31 @@ function handleConditionalGridFields() {
 
 
 /**
- * Initializes the Tom Select icon picker with a grid layout.
+ * Initializes the Choices.js icon picker.
  */
 function initializeIconPicker() {
-    const iconPicker = document.getElementById('icon-picker');
-    if (!iconPicker || typeof TomSelect === 'undefined') {
-        return;
-    }
-    if (iconPicker.tomselect) {
-        return;
-    }
+    const iconPickerElement = document.querySelector('.js-choice-icon-picker');
 
-    new TomSelect(iconPicker, {
-        create: false, // Prevents typing new entries
-
-        // **The Fix**: This function runs every time the selection changes.
-        onChange: function() {
-            // We wait 1 millisecond for the library to finish its faulty render.
-            setTimeout(() => {
-                // Then, we find and remove the leftover placeholder.
-                const placeholder = this.control.querySelector('div:not(.item)');
-                if (placeholder) {
-                    placeholder.remove();
-                }
-            }, 1);
-        },
-
-        render: {
-            // Renders the icon grid in the dropdown
-            option: function(data, escape) {
-                if (!data.value) { return '<div></div>'; }
-                return `<div class="option" title="${escape(data.text)}">
-                          <span class="material-symbols-outlined">${escape(data.value)}</span>
-                        </div>`;
+    if (iconPickerElement) {
+        const choices = new Choices(iconPickerElement, {
+            callbackOnCreateTemplates: function (template) {
+                return {
+                    item: ({ classNames }, data) => {
+                        return template(`
+                            <div class="${classNames.item}" data-item data-id="${data.id}" data-value="${data.value}">
+                                <span class="material-symbols-outlined">${data.value}</span>
+                            </div>
+                        `);
+                    },
+                    choice: ({ classNames }, data) => {
+                         return template(`
+                            <div class="${classNames.item} ${classNames.itemChoice} ${data.disabled ? classNames.itemDisabled : ''} ${data.highlighted ? classNames.highlightedState : ''}" data-select-text="" data-choice data-id="${data.id}" data-value="${data.value}" role="option">
+                                <span class="material-symbols-outlined">${data.value}</span>
+                            </div>
+                        `);
+                    },
+                };
             },
-            // Renders the selected item OR the placeholder in the control box
-            item: function(data, escape) {
-                if (!data.value) {
-                    return `<div>${escape(data.text)}</div>`;
-                }
-                return `<div class="item">
-                          <span class="material-symbols-outlined">${escape(data.value)}</span>
-                        </div>`;
-            }
-        }
-    });
+        });
+    }
 }

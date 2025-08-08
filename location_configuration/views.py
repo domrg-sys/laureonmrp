@@ -60,7 +60,7 @@ class LocationTypeForm(forms.ModelForm):
         choices=ICON_CHOICES,
         required=False,
         label="Icon",
-        widget=forms.Select(attrs={'id': 'icon-picker'})
+        widget=forms.Select(attrs={'class': 'js-choice-icon-picker'})
     )
 
     class Meta:

@@ -238,10 +238,18 @@ function initializeEditTypeButtons() {
     if (!modal) return;
 
     const form = modal.querySelector('form');
+    const nameInput = form.querySelector('#id_name');
 
     editButtons.forEach(button => {
         button.addEventListener('click', () => {
             const data = JSON.parse(button.dataset.data);
+
+            // Conditionally disable the name field based on the data attribute
+            if (data['is-in-use']) {
+                nameInput.disabled = true;
+            } else {
+                nameInput.disabled = false;
+            }
 
             // Populate form fields
             form.querySelector('#id_location_type_id').value = data['type-id'];

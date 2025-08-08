@@ -80,12 +80,13 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
         location_types = LocationType.objects.prefetch_related('allowed_parents').all()
 
         can_change = self.request.user.has_perm('location_configuration.change_locationtype')
-        can_delete = self.request.user.has_perm('location_configuration.delete_locationtype')
+        can_delete_perm = self.request.user.has_perm('location_configuration.delete_locationtype')
 
         for type_obj in location_types:
             parent_names = ", ".join([p.name for p in type_obj.allowed_parents.all()]) or "—"
             grid_display = f"{type_obj.rows}x{type_obj.columns}" if type_obj.rows and type_obj.columns else "—"
             icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
+            is_in_use = type_obj.location_set.exists()
 
             actions = []
             if can_change:
@@ -104,12 +105,20 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
                         'has-spaces': type_obj.has_spaces,
                         'rows': type_obj.rows,
                         'columns': type_obj.columns,
+                        'is-in-use': is_in_use,
                     })
                 })
             else:
                 actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-disabled'})
 
-            actions.append({'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red' if can_delete else 'btn-icon-disabled'})
+            # A user can only delete if they have permission AND the type is not in use.
+            can_actually_delete = can_delete_perm and not is_in_use
+            actions.append({
+                'url': '#',  # This would eventually point to a delete view
+                'icon': 'delete',
+                'label': 'Delete',
+                'class': 'btn-icon-red' if can_actually_delete else 'btn-icon-disabled'
+            })
 
             table_rows.append({
                 'cells': [

@@ -72,8 +72,20 @@ class LocationTypeForm(forms.ModelForm):
 class EditLocationTypeForm(LocationTypeForm):
     """
     A form for editing an existing LocationType.
-    It inherits from the main form but makes the 'name' field readonly.
+    It inherits from the main form but makes the 'name' field readonly
+    if the location type is in use.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['name'].disabled = True
+        instance = kwargs.get('instance')
+
+        # If the instance exists and has related locations, disable the name field
+        if instance and instance.pk and instance.location_set.exists():
+            self.fields['name'].disabled = True
+
+    def clean_name(self):
+        # If the name field is disabled, its value won't be in cleaned_data.
+        # We return the original name from the instance to prevent it from being changed.
+        if self.fields['name'].disabled:
+            return self.instance.name
+        return self.cleaned_data.get('name')

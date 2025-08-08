@@ -34,14 +34,3 @@
 
     {% include "partials/_add_location_type_modal.html" %}
 {% endblock %}
-
-{% if form_had_errors %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const modal = document.getElementById('add-type-modal');
-        if (modal) {
-            modal.classList.add('is-active');
-        }
-    });
-</script>
-{% endif %}

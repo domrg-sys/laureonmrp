@@ -1,0 +1,25 @@
+{% if form.errors %}
+  <div class="form-error-summary">
+    <p>Please correct the following errors:</p>
+    <ul>
+      {# Display non-field-specific errors #}
+      {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+      {# Display errors for each field #}
+      {% for field in form %}
+        {% for error in field.errors %}
+          <li>{{ field.label }}: {{ error }}</li>
+        {% endfor %}
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+@register.inclusion_tag('partials/_form_error_summary.html')
+def form_error_summary(form):
+    """
+    Renders a summary of form errors.
+    Usage: {% form_error_summary form %}
+    """
+    return {'form': form}

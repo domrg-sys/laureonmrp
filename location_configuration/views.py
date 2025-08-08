@@ -88,6 +88,7 @@ class LocationTypeForm(forms.ModelForm):
 # --- VIEW 2: For the "Location Types" Tab ---
 @permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
 def location_types_tab_view(request):
+    form_had_errors = False
     if request.method == 'POST':
         form = LocationTypeForm(request.POST)
         if form.is_valid():
@@ -100,6 +101,7 @@ def location_types_tab_view(request):
 
     context = _prepare_tabs_context('types')
     context['form'] = form
+    context['form_had_errors'] = form_had_errors
 
     context['table_headers'] = [
         'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',

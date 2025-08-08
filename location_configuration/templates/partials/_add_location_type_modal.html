@@ -1,6 +1,6 @@
 {% load component_tags %}
 
-<div class="modal-overlay" id="add-type-modal">
+<div class="modal-overlay" id="add-type-modal" {% if form.errors %}data-is-open-on-load{% endif %}>
   <div class="modal-content">
     <div class="modal-header">
         <h2 class="modal-title">Add New Location Type</h2>
@@ -12,22 +12,16 @@
       <form method="post" action="{% url 'location_configuration:types_tab' %}">
           {% csrf_token %}
 
-          {% if form.non_field_errors %}
-            <div class="form-errors">
-              {% for error in form.non_field_errors %}
-                <p class="error-text">{{ error }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
+          {# Use the reusable component to display all form errors in one place #}
+          {% form_error_summary form %}
 
+          {# --- Form Fields (now without individual error messages) --- #}
           <div class="form-field">
             {{ form.name.label_tag }}{{ form.name }}
-            {% for error in form.name.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
           
           <div class="form-field">
             {{ form.icon.label_tag }}{{ form.icon }}
-            {% for error in form.icon.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
 
           <div class="form-field">
@@ -35,7 +29,6 @@
             <div class="checkbox-list">
               {{ form.allowed_parents }}
             </div>
-            {% for error in form.allowed_parents.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
 
           <div class="form-field-inline">
@@ -55,14 +48,12 @@
             {{ form.rows.label_tag }}
             {{ form.rows }}
             {% if form.rows.help_text %}<p class="help-text">{{ form.rows.help_text }}</p>{% endif %}
-            {% for error in form.rows.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
 
           <div class="form-field">
             {{ form.columns.label_tag }}
             {{ form.columns }}
             {% if form.columns.help_text %}<p class="help-text">{{ form.columns.help_text }}</p>{% endif %}
-            {% for error in form.columns.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
 
           <div class="form-actions">

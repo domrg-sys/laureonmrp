@@ -1,27 +1,81 @@
-// In static/js/main.js
+/**
+ * A variable to hold the Choices.js instance for our icon picker.
+ * This makes it accessible to other functions that need to interact with it.
+ */
+let iconPickerInstance = null;
 
 /**
  * Main entry point for all JavaScript on the site.
- * This single event listener ensures all functions run in a predictable order
- * after the document is fully loaded.
  */
 document.addEventListener("DOMContentLoaded", () => {
+  initializeIconPicker(); // Initialize the picker first so the instance is ready.
   initializeModals();
   handleTabSlider();
   handleConditionalGridFields();
-  initializeIconPicker();
 });
 
 
 // --- FUNCTION DEFINITIONS ---
 
 /**
- * Sets up all modal open/close triggers.
+ * A custom function to manually clear all fields in a form.
+ * This replaces form.reset() to avoid resetting to server-rendered error values.
+ * @param {HTMLFormElement} form The form element to clear.
+ */
+const clearForm = (form) => {
+  const elements = form.elements;
+
+  // Loop through all form elements
+  for (let i = 0; i < elements.length; i++) {
+    const field = elements[i];
+    const type = field.type.toLowerCase();
+    const tagName = field.tagName.toLowerCase();
+
+    // Skip hidden fields (like CSRF token), buttons, and file inputs
+    if (type === 'hidden' || type === 'submit' || type === 'button' || type === 'reset' || type === 'file') {
+      continue;
+    }
+
+    // Clear text inputs, textareas, and other text-like fields
+    if (tagName === 'textarea' || (tagName === 'input' && ['text', 'number', 'password', 'email', 'url', 'tel'].includes(type))) {
+      field.value = '';
+    }
+    // Uncheck checkboxes and radio buttons
+    else if (type === 'checkbox' || type === 'radio') {
+      field.checked = false;
+    }
+    // Reset select fields that are NOT the custom icon picker
+    else if (tagName === 'select' && !field.classList.contains('js-choice-icon-picker')) {
+      field.selectedIndex = -1; // Or 0 to select the first option
+    }
+  }
+
+  // Finally, specifically reset the Choices.js icon picker instance
+  if (iconPickerInstance) {
+    iconPickerInstance.setValue([{ value: '', label: '' }]);
+  }
+};
+
+
+/**
+ * Sets up all modal open/close triggers and handles form resetting.
  */
 function initializeModals() {
-  const openModal = ($el) => $el.classList.add("is-active");
-  const closeModal = ($el) => $el.classList.remove("is-active");
+  const openModal = ($el) => {
+    const form = $el.querySelector('form');
+    if (form) {
+      // Use our new custom function to reliably clear the form
+      clearForm(form);
+    }
+    // Finally, show the modal.
+    $el.classList.add("is-active");
+  };
 
+  const closeModal = ($el) => {
+    $el.classList.remove("is-active");
+  };
+
+  // Setup triggers to open modals on click.
   document.querySelectorAll("[data-modal-target]").forEach(($trigger) => {
     const modalId = $trigger.dataset.modalTarget;
     const $target = document.querySelector(modalId);
@@ -30,12 +84,18 @@ function initializeModals() {
     }
   });
 
+  // Setup triggers to close modals.
   document.querySelectorAll(".modal-overlay").forEach(($overlay) => {
     $overlay.addEventListener("click", (event) => {
       if (event.target.classList.contains('modal-overlay') || event.target.closest('.modal-close')) {
         closeModal($overlay);
       }
     });
+
+    // Check on page load if a modal should be open (e.g., due to form errors).
+    if ($overlay.hasAttribute('data-is-open-on-load')) {
+        $overlay.classList.add('is-active');
+    }
   });
 }
 
@@ -88,13 +148,14 @@ function handleConditionalGridFields() {
 
 
 /**
- * Initializes the Choices.js icon picker.
+ * Initializes the Choices.js icon picker and stores its instance.
  */
 function initializeIconPicker() {
     const iconPickerElement = document.querySelector('.js-choice-icon-picker');
 
     if (iconPickerElement) {
-        const choices = new Choices(iconPickerElement, {
+        // Create the Choices instance and store it in our global variable.
+        iconPickerInstance = new Choices(iconPickerElement, {
             searchEnabled: false,
             callbackOnCreateTemplates: function (template) {
                 return {

@@ -65,7 +65,10 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
             if form.is_valid():
                 return self.form_valid(form)
             else:
-                return self.form_invalid(form)
+                # If the form is invalid, re-render the page with the form
+                # This ensures the correct, filtered dropdowns are shown
+                context = self.get_context_data(edit_form=form)
+                return self.render_to_response(context)
         else: #This is an add form submission
             return super().post(request, *args, **kwargs)
 
@@ -97,12 +100,12 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
                     'class': 'btn-icon-blue edit-type-btn',
                     'data': json.dumps({
                         'type-id': type_obj.pk,
-                        'type-name': type_obj.name,
-                        'type-icon': type_obj.icon,
-                        'allowed-parents': [p.pk for p in type_obj.allowed_parents.all()],
-                        'can-store-inventory': type_obj.can_store_inventory,
-                        'can-store-samples': type_obj.can_store_samples,
-                        'has-spaces': type_obj.has_spaces,
+                        'name': type_obj.name,
+                        'icon': type_obj.icon,
+                        'allowed_parents': [p.pk for p in type_obj.allowed_parents.all()],
+                        'can_store_inventory': type_obj.can_store_inventory,
+                        'can_store_samples': type_obj.can_store_samples,
+                        'has_spaces': type_obj.has_spaces,
                         'rows': type_obj.rows,
                         'columns': type_obj.columns,
                         'is-in-use': is_in_use,

@@ -17,7 +17,25 @@ document.addEventListener("DOMContentLoaded", () => {
   if (addModal) {
     handleConditionalGridFields(addModal);
   }
-  initializeEditTypeButtons();
+  
+  // Initialize the generic edit modal for location types
+  initializeEditModal('.edit-type-btn', '#edit-type-modal', (form, data) => {
+    // This is a callback function to handle logic specific to the location type edit modal
+    
+    // Set the hidden location_type_id field
+    const typeIdField = form.querySelector('input[name="location_type_id"]');
+    if (typeIdField) {
+        typeIdField.value = data['type-id'];
+    }
+
+    // Handle the icon picker
+    if (editIconPickerInstance) {
+        editIconPickerInstance.setChoiceByValue(data['type-icon']);
+    }
+    
+    // Handle conditional fields
+    handleConditionalGridFields(form);
+  });
 });
 
 
@@ -236,55 +254,49 @@ function initializeIconPicker() {
 }
 
 /**
- * Sets up the edit buttons to open the modal and populate it with data.
+ * Initializes edit modals.
+ * @param {string} buttonSelector - The selector for the edit buttons.
+ * @param {string} modalSelector - The selector for the modal.
+ * @param {function} callback - A callback function to run after populating the form.
  */
-function initializeEditTypeButtons() {
-    const editButtons = document.querySelectorAll('.edit-type-btn');
-    const modal = document.querySelector('#edit-type-modal');
-    if (!modal) return;
+function initializeEditModal(buttonSelector, modalSelector, callback) {
+    const editButtons = document.querySelectorAll(buttonSelector);
+    const modal = document.querySelector(modalSelector);
+
+    if (!modal || editButtons.length === 0) {
+        return;
+    }
 
     const form = modal.querySelector('form');
 
     editButtons.forEach(button => {
         button.addEventListener('click', () => {
             const data = JSON.parse(button.dataset.data);
-            const nameInput = form.querySelector('#id_name');
 
-            // Conditionally disable the name field based on the data attribute
-            if (data['is-in-use']) {
-                nameInput.disabled = true;
-            } else {
-                nameInput.disabled = false;
-            }
-
-            // Populate form fields
-            form.querySelector('#id_location_type_id').value = data['type-id'];
-            nameInput.value = data['type-name'];
-            editIconPickerInstance.setChoiceByValue(data['type-icon']);
-
-            // Clear all checkboxes first
-            form.querySelectorAll('input[name="allowed_parents"]').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-
-            // Then check the ones that are in the data
-            if (data['allowed-parents']) {
-                data['allowed-parents'].forEach(parentId => {
-                    const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
-                    if (checkbox) {
-                        checkbox.checked = true;
+            // Populate form fields based on data attributes
+            for (const key in data) {
+                const field = form.querySelector(`[name="${key}"]`);
+                if (field) {
+                    if (field.type === 'checkbox') {
+                        field.checked = data[key];
+                    } else if (Array.isArray(data[key])) { // For multi-select fields like allowed_parents
+                        data[key].forEach(value => {
+                            const option = form.querySelector(`input[name="${key}"][value="${value}"]`);
+                            if (option) {
+                                option.checked = true;
+                            }
+                        });
                     }
-                });
+                    else {
+                        field.value = data[key];
+                    }
+                }
             }
 
-            form.querySelector('#id_can_store_inventory').checked = data['can-store-inventory'];
-            form.querySelector('#id_can_store_samples').checked = data['can-store-samples'];
-            form.querySelector('#id_has_spaces').checked = data['has-spaces'];
-            form.querySelector('#id_rows').value = data.rows;
-            form.querySelector('#id_columns').value = data.columns;
-
-            // Now that the modal is populated, run the conditional logic for grid fields.
-            handleConditionalGridFields(modal);
+            // Run the callback for modal-specific logic
+            if (callback) {
+                callback(form, data);
+            }
 
             modal.classList.add('is-active');
         });

@@ -24,17 +24,25 @@ class LocationType(models.Model):
     def __str__(self):
         return self.name
     
-    def get_all_descendants(self):
+    def get_all_descendants(self, visited=None):
         """
-        Recursively finds all descendant types for the current instance.
-        This is used to prevent circular dependencies in forms.
+        Recursively finds all descendant types for the current instance,
+        while keeping track of visited nodes to prevent infinite loops in
+        case of circular dependencies.
         """
+        if visited is None:
+            visited = set()
+
+        if self in visited:
+            return set()
+            
+        visited.add(self)
+        
         descendants = set()
-        children = self.allowed_children.all()
-        for child in children:
-            if child not in descendants:
-                descendants.add(child)
-                descendants.update(child.get_all_descendants())
+        for child in self.allowed_children.all():
+            descendants.add(child)
+            descendants.update(child.get_all_descendants(visited=visited))
+            
         return descendants
 
     def clean(self):

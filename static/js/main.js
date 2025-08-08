@@ -3,6 +3,7 @@
  * This makes it accessible to other functions that need to interact with it.
  */
 let iconPickerInstance = null;
+let editIconPickerInstance = null;
 
 /**
  * Main entry point for all JavaScript on the site.
@@ -12,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeModals();
   handleTabSlider();
   handleConditionalGridFields();
+  initializeEditTypeButtons();
 });
 
 
@@ -66,6 +68,10 @@ const clearForm = (form) => {
   // Finally, specifically reset the Choices.js icon picker instance
   if (iconPickerInstance) {
     iconPickerInstance.setChoiceByValue('warehouse');
+  }
+
+  if (editIconPickerInstance) {
+    editIconPickerInstance.setChoiceByValue('warehouse');
   }
 };
 
@@ -168,7 +174,7 @@ function handleConditionalGridFields() {
  * Initializes the Choices.js icon picker and stores its instance.
  */
 function initializeIconPicker() {
-    const iconPickerElement = document.querySelector('.js-choice-icon-picker');
+    const iconPickerElement = document.querySelector('#add-type-modal .js-choice-icon-picker');
 
     if (iconPickerElement) {
         // Create the Choices instance and store it in our global variable.
@@ -194,4 +200,76 @@ function initializeIconPicker() {
             },
         });
     }
+
+    const editIconPickerElement = document.querySelector('#edit-type-modal .js-choice-icon-picker');
+
+    if (editIconPickerElement) {
+        // Create the Choices instance and store it in our global variable.
+        editIconPickerInstance = new Choices(editIconPickerElement, {
+            searchEnabled: false,
+            callbackOnCreateTemplates: function (template) {
+                return {
+                    item: ({ classNames }, data) => {
+                        return template(`
+                            <div class="${classNames.item}" data-item data-id="${data.id}" data-value="${data.value}">
+                                <span class="material-symbols-outlined">${data.value}</span>
+                            </div>
+                        `);
+                    },
+                    choice: ({ classNames }, data) => {
+                         return template(`
+                            <div class="${classNames.item} ${classNames.itemChoice} ${data.disabled ? classNames.itemDisabled : ''} ${data.highlighted ? classNames.highlightedState : ''}" data-select-text="" data-choice data-id="${data.id}" data-value="${data.value}" role="option">
+                                <span class="material-symbols-outlined">${data.value}</span>
+                            </div>
+                        `);
+                    },
+                };
+            },
+        });
+    }
+}
+
+/**
+ * Sets up the edit buttons to open the modal and populate it with data.
+ */
+function initializeEditTypeButtons() {
+    const editButtons = document.querySelectorAll('.edit-type-btn');
+    const modal = document.querySelector('#edit-type-modal');
+    if (!modal) return;
+
+    const form = modal.querySelector('form');
+
+    editButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const data = JSON.parse(button.dataset.data);
+
+            // Populate form fields
+            form.querySelector('#id_location_type_id').value = data['type-id'];
+            form.querySelector('#id_name').value = data['type-name'];
+            editIconPickerInstance.setChoiceByValue(data['type-icon']);
+
+            // Clear all checkboxes first
+            form.querySelectorAll('input[name="allowed_parents"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            // Then check the ones that are in the data
+            if (data['allowed-parents']) {
+                data['allowed-parents'].forEach(parentId => {
+                    const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+
+            form.querySelector('#id_can_store_inventory').checked = data['can-store-inventory'];
+            form.querySelector('#id_can_store_samples').checked = data['can-store-samples'];
+            form.querySelector('#id_has_spaces').checked = data['has-spaces'];
+            form.querySelector('#id_rows').value = data.rows;
+            form.querySelector('#id_columns').value = data.columns;
+
+            modal.classList.add('is-active');
+        });
+    });
 }

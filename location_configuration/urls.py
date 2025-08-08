@@ -12,4 +12,6 @@ urlpatterns = [
 
     # This URL is for the "Location Types" tab.
     path('types/', views.LocationTypesTabView.as_view(), name='types_tab'),
+
+    path('types/edit/', views.LocationTypesTabView.as_view(), name='edit_type'),
 ]

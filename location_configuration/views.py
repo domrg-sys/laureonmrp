@@ -2,9 +2,11 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import TemplateView
 from django.urls import reverse, reverse_lazy
 from django.utils.safestring import mark_safe
+from django.shortcuts import get_object_or_404
+import json
 
-from core.views import FormHandlingMixin  
-from .forms import LocationTypeForm      
+from core.views import FormHandlingMixin
+from .forms import LocationTypeForm, EditLocationTypeForm
 from .models import LocationType
 
 TABS = [
@@ -41,15 +43,31 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('types'))
-        
+
         context['form_had_errors'] = bool(context.get('form').errors)
-        
+
         context['table_headers'] = [
             'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',
             'Stores Samples', 'Has Spaces', 'Grid', 'Actions'
         ]
         context['table_rows'] = self._get_table_rows()
+
+        if 'edit_form' not in kwargs:
+            context['edit_form'] = EditLocationTypeForm()
+
         return context
+
+    def post(self, request, *args, **kwargs):
+        # Differentiate between add and edit form submissions
+        if 'edit_form_submit' in request.POST:
+            instance = get_object_or_404(LocationType, pk=request.POST.get('location_type_id'))
+            form = EditLocationTypeForm(request.POST, instance=instance)
+            if form.is_valid():
+                return self.form_valid(form)
+            else:
+                return self.form_invalid(form)
+        else: #This is an add form submission
+            return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         """ This method is called when the form is successfully validated. """
@@ -68,9 +86,29 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
             parent_names = ", ".join([p.name for p in type_obj.allowed_parents.all()]) or "—"
             grid_display = f"{type_obj.rows}x{type_obj.columns}" if type_obj.rows and type_obj.columns else "—"
             icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
-            
+
             actions = []
-            actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-blue' if can_change else 'btn-icon-disabled'})
+            if can_change:
+                actions.append({
+                    'url': '#',
+                    'icon': 'edit',
+                    'label': 'Edit',
+                    'class': 'btn-icon-blue edit-type-btn',
+                    'data': json.dumps({
+                        'type-id': type_obj.pk,
+                        'type-name': type_obj.name,
+                        'type-icon': type_obj.icon,
+                        'allowed-parents': [p.pk for p in type_obj.allowed_parents.all()],
+                        'can-store-inventory': type_obj.can_store_inventory,
+                        'can-store-samples': type_obj.can_store_samples,
+                        'has-spaces': type_obj.has_spaces,
+                        'rows': type_obj.rows,
+                        'columns': type_obj.columns,
+                    })
+                })
+            else:
+                actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-disabled'})
+
             actions.append({'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red' if can_delete else 'btn-icon-disabled'})
 
             table_rows.append({
@@ -89,4 +127,3 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
         """ Private helper method to generate readonly checkbox HTML. """
         checked_attribute = 'checked' if checked else ''
         return mark_safe(f'<input type="checkbox" class="readonly-checkbox" {checked_attribute}>')
-

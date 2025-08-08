@@ -1,0 +1,32 @@
+{% load component_tags %}
+{% load form_tags %}
+
+<div class="modal-overlay" id="edit-type-modal" {% if edit_form.errors %}data-is-open-on-load{% endif %}>
+  <div class="modal-content">
+    <div class="modal-header">
+        <h2 class="modal-title">Edit Location Type</h2>
+        <button class="modal-close btn-icon btn-icon-red" aria-label="Close modal">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{% url 'location_configuration:edit_type' %}" novalidate id="edit-type-form">
+          {% csrf_token %}
+          <input type="hidden" name="location_type_id" id="id_location_type_id">
+          <input type="hidden" name="edit_form_submit" value="true">
+
+          {# This component still handes the summary of all errors at the top #}
+          {% form_error_summary edit_form %}
+
+          {# --- Render All Form Fields Automatically --- #}
+          {% for field in edit_form %}
+            {% render_field field %}
+          {% endfor %}
+
+          <div class="form-actions">
+              <button type="submit" class="btn btn-green">Save Changes</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>

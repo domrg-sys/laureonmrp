@@ -68,3 +68,12 @@ class LocationTypeForm(forms.ModelForm):
                 self.add_error('columns', "This field is required when 'Has Spaces' is checked.")
         
         return cleaned_data
+
+class EditLocationTypeForm(LocationTypeForm):
+    """
+    A form for editing an existing LocationType.
+    It inherits from the main form but makes the 'name' field readonly.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['name'].disabled = True

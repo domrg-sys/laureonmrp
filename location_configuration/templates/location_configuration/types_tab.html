@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load component_tags %}
+{% load static %}
 
 {% block page_title %}
     Location Configuration
@@ -35,4 +36,8 @@
     {# Pass the correct error flag to each modal template #}
     {% include "partials/_add_location_type_modal.html" with form=form has_errors=add_form_has_errors %}
     {% include "partials/_edit_location_type_modal.html" with edit_form=edit_form has_errors=edit_form_has_errors %}
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'location_configuration/js/location_config.js' %}" defer></script>
 {% endblock %}

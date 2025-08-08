@@ -295,6 +295,14 @@ body {
     color: var(--color-secondary-5);
 }
 
+.btn-icon-ltblue {
+    color: var(--color-secondary-5);
+}
+
+.btn-icon-ltblue:hover {
+    color: var(--color-secondary-6);
+}
+
 .btn-icon-green {
     color: var(--color-primary-2);
 }
@@ -457,15 +465,10 @@ input[type="checkbox"] {
     margin-bottom: 0;
 }
 
-.checkbox-checked {
-    font-variation-settings: 'FILL' 1 !important;
-    color: var(--color-secondary-6) !important;
-    font-weight: 400 !important;
-}
-
-.checkbox-unchecked {
-    font-variation-settings: 'FILL' 0 !important;
-    font-weight: 300 !important;
+.readonly-checkbox {
+    accent-color: var(--color-secondary-6); /* Set the color you want */
+    opacity: 1; /* Ensure it's not faded */
+    pointer-events: none; /* This makes the element unclickable */
 }
 
 .form-field .help-text {

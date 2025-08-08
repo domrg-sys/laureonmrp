@@ -12,46 +12,57 @@
       <form method="post" action="{% url 'location_configuration:types_tab' %}">
           {% csrf_token %}
 
-          {# Manually render Name and Icon fields #}
-          <div class="form-field">{{ form.name.label_tag }}{{ form.name }}</div>
-          <div class="form-field">{{ form.icon.label_tag }}{{ form.icon }}</div>
+          {% if form.non_field_errors %}
+            <div class="form-errors">
+              {% for error in form.non_field_errors %}
+                <p class="error-text">{{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
 
-          {# Manually render "Allowed Parents" #}
+          <div class="form-field">
+            {{ form.name.label_tag }}{{ form.name }}
+            {% for error in form.name.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
+          </div>
+          
+          <div class="form-field">
+            {{ form.icon.label_tag }}{{ form.icon }}
+            {% for error in form.icon.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
+          </div>
+
           <div class="form-field">
             <label>{{ form.allowed_parents.label }}</label>
             <div class="checkbox-list">
               {{ form.allowed_parents }}
             </div>
+            {% for error in form.allowed_parents.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
 
-          {# Render boolean checkboxes with the new inline style #}
           <div class="form-field-inline">
-            <label for="{{ form.can_store_inventory.id_for_label }}">Stores Inventory: </label>
+            <label for="{{ form.can_store_inventory.id_for_label }}">Stores Inventory</label>
             {{ form.can_store_inventory }}
           </div>
           <div class="form-field-inline">
-            <label for="{{ form.can_store_samples.id_for_label }}">Stores Samples: </label>
+            <label for="{{ form.can_store_samples.id_for_label }}">Stores Samples</label>
             {{ form.can_store_samples }}
           </div>
           <div class="form-field-inline">
-            <label for="{{ form.has_spaces.id_for_label }}">Has Spaces: </label>
+            <label for="{{ form.has_spaces.id_for_label }}">Has Spaces</label>
             {{ form.has_spaces }}
           </div>
           
           <div class="form-field">
             {{ form.rows.label_tag }}
             {{ form.rows }}
-            {% if form.rows.help_text %}
-              <p class="help-text">{{ form.rows.help_text }}</p>
-            {% endif %}
+            {% if form.rows.help_text %}<p class="help-text">{{ form.rows.help_text }}</p>{% endif %}
+            {% for error in form.rows.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
 
           <div class="form-field">
             {{ form.columns.label_tag }}
             {{ form.columns }}
-            {% if form.columns.help_text %}
-              <p class="help-text">{{ form.columns.help_text }}</p>
-            {% endif %}
+            {% if form.columns.help_text %}<p class="help-text">{{ form.columns.help_text }}</p>{% endif %}
+            {% for error in form.columns.errors %}<p class="error-text">{{ error }}</p>{% endfor %}
           </div>
 
           <div class="form-actions">

@@ -70,6 +70,21 @@ class LocationTypeForm(forms.ModelForm):
             'allowed_parents': forms.CheckboxSelectMultiple(),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        has_spaces = cleaned_data.get("has_spaces")
+        rows = cleaned_data.get("rows")
+        columns = cleaned_data.get("columns")
+
+        if has_spaces:
+            # If "Has Spaces" is checked, both rows and columns must have a value.
+            if not rows:
+                self.add_error('rows', "This field is required when 'Has Spaces' is checked.")
+            if not columns:
+                self.add_error('columns', "This field is required when 'Has Spaces' is checked.")
+        
+        return cleaned_data
+
 # --- VIEW 2: For the "Location Types" Tab ---
 @permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
 def location_types_tab_view(request):
@@ -78,6 +93,8 @@ def location_types_tab_view(request):
         if form.is_valid():
             form.save()
             return redirect('location_configuration:types_tab')
+        else:
+            form_had_errors = True
     else:
         form = LocationTypeForm()
 
@@ -100,26 +117,17 @@ def location_types_tab_view(request):
             grid_display = "—"
 
         def get_checkbox_html(checked):
-            if checked:
-                icon_name = 'check_box'
-                css_class = 'checkbox-checked'
-            else:
-                icon_name = 'check_box_outline_blank'
-                css_class = 'checkbox-unchecked'
-            
-            return mark_safe(f'<span class="material-symbols-outlined {css_class}">{icon_name}</span>')
+            checked_attribute = 'checked' if checked else ''
+            return mark_safe(f'<input type="checkbox" class="readonly-checkbox" {checked_attribute}>')
 
         icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
 
         actions = []
-
-        # Check if the user has the 'change' (edit) permission for the LocationType model
         if request.user.has_perm('location_configuration.change_locationtype'):
             actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-blue'})
         else:
             actions.append({'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-disabled'})
 
-        # Check if the user has the 'delete' permission for the LocationType model
         if request.user.has_perm('location_configuration.delete_locationtype'):
             actions.append({'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red'})
         else:
@@ -135,10 +143,7 @@ def location_types_tab_view(request):
                 get_checkbox_html(type_obj.has_spaces), 
                 grid_display, 
             ],
-            'actions': [
-                {'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-blue'},
-                {'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red'},
-            ]
+            'actions': actions
         }
         table_rows.append(row)
     

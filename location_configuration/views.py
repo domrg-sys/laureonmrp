@@ -99,6 +99,7 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
                     'icon': 'edit',
                     'label': 'Edit',
                     'class': 'btn-icon-blue edit-type-btn',
+                    'modal_target': '#edit-type-modal',  # <-- Add this line
                     'data': json.dumps({
                         'location_type_id': type_obj.pk,
                         'name': type_obj.name,

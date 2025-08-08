@@ -55,6 +55,9 @@ function handleConditionalGridFields(container) {
 /**
  * Sets up the edit buttons to open the modal and populate it with data.
  */
+/**
+ * Sets up the edit buttons to open the modal and populate it with data.
+ */
 function initializeEditTypeButtons() {
     const editButtons = document.querySelectorAll('.edit-type-btn');
     const modal = document.querySelector('#edit-type-modal');
@@ -65,8 +68,9 @@ function initializeEditTypeButtons() {
     editButtons.forEach(button => {
         button.addEventListener('click', (event) => {
             event.preventDefault();
-            clearForm(form); 
 
+            // The generic modal script in main.js will have already cleared the form.
+            // We just need to populate it with data.
             const data = JSON.parse(button.dataset.data);
 
             // Populate form fields
@@ -78,7 +82,6 @@ function initializeEditTypeButtons() {
                 editIconPickerInstance.setChoiceByValue(data.icon || 'warehouse');
             }
             
-
             // Check the correct checkboxes for allowed_parents
             if (data.allowed_parents) {
                 data.allowed_parents.forEach(parentId => {
@@ -102,7 +105,9 @@ function initializeEditTypeButtons() {
             // Now that the modal is populated, run the conditional logic for grid fields.
             handleConditionalGridFields(modal);
 
-            modal.classList.add('is-active');
+            // We no longer need to manually open the modal here, as the generic
+            // script in main.js will handle it via the data-modal-target attribute.
+            // modal.classList.add('is-active'); 
         });
     });
 }

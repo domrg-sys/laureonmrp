@@ -20,7 +20,11 @@
                             {% for action in row.actions %}
                                 {# If the action has a URL, it's a clickable link #}
                                 {% if action.url %}
-                                    <a href="{{ action.url }}" class="btn-icon {{ action.class }}" title="{{ action.label }}"data-data='{{ action.data }}'>
+                                    <a href="{{ action.url }}" 
+                                       class="btn-icon {{ action.class }}" 
+                                       title="{{ action.label }}"
+                                       {% if action.modal_target %}data-modal-target="{{ action.modal_target }}"{% endif %}
+                                       data-data='{{ action.data }}'>
                                         <span class="material-symbols-outlined">{{ action.icon }}</span>
                                     </a>
                                 {# Otherwise, it's a disabled span #}

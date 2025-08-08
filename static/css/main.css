@@ -117,8 +117,9 @@ body {
 }
 
 .material-symbols-outlined {
-  vertical-align: middle; /* Aligns icons nicely with text */
-  line-height: inherit;
+    font-size: 2rem !important;
+    vertical-align: middle; /* Aligns icons nicely with text */
+    line-height: inherit;
 }
 
 /*--- Tab Styles ---*/
@@ -456,6 +457,17 @@ input[type="checkbox"] {
     margin-bottom: 0;
 }
 
+.checkbox-checked {
+    font-variation-settings: 'FILL' 1 !important;
+    color: var(--color-secondary-6) !important;
+    font-weight: 400 !important;
+}
+
+.checkbox-unchecked {
+    font-variation-settings: 'FILL' 0 !important;
+    font-weight: 300 !important;
+}
+
 .form-field .help-text {
     text-align: left;
     margin-top: 0.5rem;
@@ -516,6 +528,10 @@ input[type="checkbox"] {
     color: var(--color-gray-3);
 }
 
+.data-table input[type="checkbox"]:disabled {
+    opacity: 1; 
+    accent-color: var(--color-secondary-6); 
+}
 
 /* --- Choices.js Icon Picker Customization --- */
 
@@ -527,19 +543,17 @@ input[type="checkbox"] {
 
 .choices__inner {
     width: 100%;
-    padding: 0.5rem 1rem !important;
+    padding: 0 1rem !important;
     border: 1px solid var(--color-gray-2);
     border-radius: 0.5rem;
-    font-size: 1rem;
     background-color: var(--color-primary-3);
     box-sizing: border-box;
-    min-height: auto;
+    min-height: 44px;
     display: flex;
-    align-items: center;     /* Vertically centers content */
-    justify-content: center; /* Horizontally centers content */
+    align-items: center;
+    justify-content: center;
 }
 
-/* Adds the blue focus ring to match other inputs when active */
 .choices.is-open .choices__inner {
     border-color: var(--color-secondary-5);
     box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.3);
@@ -557,6 +571,10 @@ input[type="checkbox"] {
     padding: 0.5rem;
 }
 
+.choices__item--choice .material-symbols-outlined {
+    font-size: 2rem !important; /* Adjust this value for the dropdown icon size */
+}
+
 .choices__item--choice {
     display: flex;
     align-items: center;
@@ -565,20 +583,6 @@ input[type="checkbox"] {
     border-radius: 4px;
     transition: background-color 0.2s;
     cursor: pointer;
-    font-size: 2.5rem;
     min-width: 48px;
     text-align: center;
-}
-
-/* --- Styles for Placeholder and Selected Item --- */
-
-.choices__placeholder {
-    opacity: 1;
-    color: var(--color-gray-3);
-}
-
-.choices__inner .choices__item--selectable {
-    font-size: 1.75rem;
-    padding: 0;
-    margin: 0;
 }

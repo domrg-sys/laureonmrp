@@ -100,7 +100,14 @@ def location_types_tab_view(request):
             grid_display = "—"
 
         def get_checkbox_html(checked):
-            return mark_safe('<input type="checkbox" disabled {}>'.format('checked' if checked else ''))
+            if checked:
+                icon_name = 'check_box'
+                css_class = 'checkbox-checked'
+            else:
+                icon_name = 'check_box_outline_blank'
+                css_class = 'checkbox-unchecked'
+            
+            return mark_safe(f'<span class="material-symbols-outlined {css_class}">{icon_name}</span>')
 
         icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
 

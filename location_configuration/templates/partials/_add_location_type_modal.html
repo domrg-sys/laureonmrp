@@ -26,19 +26,18 @@
 
           {# Render boolean checkboxes with the new inline style #}
           <div class="form-field-inline">
+            <label for="{{ form.can_store_inventory.id_for_label }}">Stores Inventory: </label>
             {{ form.can_store_inventory }}
-            <label for="{{ form.can_store_inventory.id_for_label }}">Stores Inventory</label>
           </div>
           <div class="form-field-inline">
+            <label for="{{ form.can_store_samples.id_for_label }}">Stores Samples: </label>
             {{ form.can_store_samples }}
-            <label for="{{ form.can_store_samples.id_for_label }}">Stores Samples</label>
           </div>
           <div class="form-field-inline">
+            <label for="{{ form.has_spaces.id_for_label }}">Has Spaces: </label>
             {{ form.has_spaces }}
-            <label for="{{ form.has_spaces.id_for_label }}">Has Spaces</label>
           </div>
           
-          {# THE FIX: The helper text now correctly appears AFTER the input field. #}
           <div class="form-field">
             {{ form.rows.label_tag }}
             {{ form.rows }}

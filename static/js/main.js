@@ -50,6 +50,13 @@ const clearForm = (form) => {
     }
   }
 
+    // Remove the form error summary element
+    const errorSummary = form.querySelector('.form-error-summary');
+    if (errorSummary) {
+        errorSummary.remove();
+    }
+
+
   // Finally, specifically reset the Choices.js icon picker instance
   if (iconPickerInstance) {
     iconPickerInstance.setValue([{ value: '', label: '' }]);
@@ -73,6 +80,10 @@ function initializeModals() {
 
   const closeModal = ($el) => {
     $el.classList.remove("is-active");
+    const form = $el.querySelector('form');
+    if (form) {
+        clearForm(form);
+    }
   };
 
   // Setup triggers to open modals on click.

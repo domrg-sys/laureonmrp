@@ -1,154 +1,92 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import permission_required
-from django.urls import reverse
-from .models import Location, LocationType, LocationSpace
-from django import forms
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.views.generic import TemplateView
+from django.urls import reverse, reverse_lazy
 from django.utils.safestring import mark_safe
 
-# This list defines the tabs for the entire "Location Configuration" section.
+from core.views import FormHandlingMixin  
+from .forms import LocationTypeForm      
+from .models import LocationType
+
 TABS = [
-    {
-        'slug': 'locations',
-        'label': 'Locations',
-        'url_name': 'location_configuration:locations_tab'
-    },
-    {
-        'slug': 'types',
-        'label': 'Location Types',
-        'url_name': 'location_configuration:types_tab'
-    },
+    {'slug': 'locations', 'label': 'Locations', 'url_name': 'location_configuration:locations_tab'},
+    {'slug': 'types', 'label': 'Location Types', 'url_name': 'location_configuration:types_tab'},
 ]
 
-# --- A helper function to prepare the tabs ---
 def _prepare_tabs_context(active_tab_slug):
-    """
-    A helper to generate the context for the tabs, including the final URLs.
-    This avoids repeating the same logic in every view.
-    """
-    # This loop generates the final URLs for the tabs
+    tabs_with_urls = []
     for tab in TABS:
-        tab['url'] = reverse(tab['url_name'])
-    
-    return {
-        'tabs': TABS,
-        'active_tab': active_tab_slug,
-    }
+        tabs_with_urls.append({
+            **tab,
+            'url': reverse(tab['url_name'])
+        })
+    return {'tabs': tabs_with_urls, 'active_tab': active_tab_slug}
 
-# --- VIEW 1: For the "Locations" Tab ---
-@permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
-def locations_tab_view(request):
-    context = _prepare_tabs_context('locations')
-    return render(request, 'location_configuration/locations_tab.html', context)
+# --- VIEW 1: "Locations" Tab (Now a Class-Based View) ---
+class LocationsTabView(PermissionRequiredMixin, TemplateView):
+    permission_required = 'location_configuration.view_locationconfiguration_tab'
+    template_name = 'location_configuration/locations_tab.html'
 
-ICON_CHOICES = [
-    ('warehouse', 'Warehouse'),
-    ('factory', 'Factory'),
-    ('room', 'Room'),
-    ('door_front', 'Door'),
-    ('shelves', 'Shelves'),
-    ('conveyor_belt', 'Conveyor Belt'),
-    ('science', 'Laboratory'),
-    ('biotech', 'Biotech'),
-    ('location_on', 'Generic Pin'),
-]
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(_prepare_tabs_context('locations'))
+        return context
 
-# --- Form for LocationType ---
-class LocationTypeForm(forms.ModelForm):
-    # Explicitly define the 'icon' field to ensure it becomes a dropdown.
-    icon = forms.ChoiceField(
-        choices=ICON_CHOICES,
-        required=False,
-        label="Icon",
-        widget=forms.Select(attrs={'class': 'js-choice-icon-picker'})
-    )
+# --- VIEW 2: "Location Types" Tab (Refactored with the Mixin) ---
+class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateView):
+    permission_required = 'location_configuration.view_locationconfiguration_tab'
+    template_name = 'location_configuration/types_tab.html'
+    form_class = LocationTypeForm
+    success_url = reverse_lazy('location_configuration:types_tab')
 
-    class Meta:
-        model = LocationType
-        # The 'icon' field is now defined above, so it's handled.
-        fields = ['name', 'icon', 'allowed_parents', 'can_store_inventory', 'can_store_samples', 'has_spaces', 'rows', 'columns']
-        widgets = {
-            'allowed_parents': forms.CheckboxSelectMultiple(),
-        }
-
-    def clean(self):
-        cleaned_data = super().clean()
-        has_spaces = cleaned_data.get("has_spaces")
-        rows = cleaned_data.get("rows")
-        columns = cleaned_data.get("columns")
-
-        if has_spaces:
-            # If "Has Spaces" is checked, both rows and columns must have a value.
-            if not rows:
-                self.add_error('rows', "This field is required when 'Has Spaces' is checked.")
-            if not columns:
-                self.add_error('columns', "This field is required when 'Has Spaces' is checked.")
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(_prepare_tabs_context('types'))
         
-        return cleaned_data
+        context['form_had_errors'] = bool(context.get('form').errors)
+        
+        context['table_headers'] = [
+            'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',
+            'Stores Samples', 'Has Spaces', 'Grid', 'Actions'
+        ]
+        context['table_rows'] = self._get_table_rows()
+        return context
 
-# --- VIEW 2: For the "Location Types" Tab ---
-@permission_required('location_configuration.view_locationconfiguration_tab', raise_exception=True)
-def location_types_tab_view(request):
-    form_had_errors = False
-    if request.method == 'POST':
-        form = LocationTypeForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('location_configuration:types_tab')
-        else:
-            form_had_errors = True
-    else:
-        form = LocationTypeForm()
+    def form_valid(self, form):
+        """ This method is called when the form is successfully validated. """
+        form.save()
+        return super().form_valid(form)
 
-    context = _prepare_tabs_context('types')
-    context['form'] = form
-    context['form_had_errors'] = form_had_errors
+    def _get_table_rows(self):
+        """ Private helper method to build and return the table rows. """
+        table_rows = []
+        location_types = LocationType.objects.prefetch_related('allowed_parents').all()
 
-    context['table_headers'] = [
-        'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',
-        'Stores Samples', 'Has Spaces', 'Grid', 'Actions'
-    ]
+        can_change = self.request.user.has_perm('location_configuration.change_locationtype')
+        can_delete = self.request.user.has_perm('location_configuration.delete_locationtype')
 
-    location_types = LocationType.objects.prefetch_related('allowed_parents').all()
+        for type_obj in location_types:
+            parent_names = ", ".join([p.name for p in type_obj.allowed_parents.all()]) or "—"
+            grid_display = f"{type_obj.rows}x{type_obj.columns}" if type_obj.rows and type_obj.columns else "—"
+            icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
+            
+            actions = []
+            actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-blue' if can_change else 'btn-icon-disabled'})
+            actions.append({'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red' if can_delete else 'btn-icon-disabled'})
 
-    table_rows = []
-    for type_obj in location_types:
-        parent_names = ", ".join([p.name for p in type_obj.allowed_parents.all()]) or "—"
-        if type_obj.rows and type_obj.columns:
-            grid_display = f"{type_obj.rows}x{type_obj.columns}"
-        else:
-            grid_display = "—"
+            table_rows.append({
+                'cells': [
+                    type_obj.name, icon_html, parent_names,
+                    self._get_checkbox_html(type_obj.can_store_inventory),
+                    self._get_checkbox_html(type_obj.can_store_samples),
+                    self._get_checkbox_html(type_obj.has_spaces),
+                    grid_display,
+                ],
+                'actions': actions
+            })
+        return table_rows
 
-        def get_checkbox_html(checked):
-            checked_attribute = 'checked' if checked else ''
-            return mark_safe(f'<input type="checkbox" class="readonly-checkbox" {checked_attribute}>')
+    def _get_checkbox_html(self, checked):
+        """ Private helper method to generate readonly checkbox HTML. """
+        checked_attribute = 'checked' if checked else ''
+        return mark_safe(f'<input type="checkbox" class="readonly-checkbox" {checked_attribute}>')
 
-        icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
-
-        actions = []
-        if request.user.has_perm('location_configuration.change_locationtype'):
-            actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-blue'})
-        else:
-            actions.append({'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-disabled'})
-
-        if request.user.has_perm('location_configuration.delete_locationtype'):
-            actions.append({'url': '#', 'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-red'})
-        else:
-            actions.append({'icon': 'delete', 'label': 'Delete', 'class': 'btn-icon-disabled'})
-
-        row = {
-            'cells': [
-                type_obj.name,
-                icon_html,
-                parent_names,
-                get_checkbox_html(type_obj.can_store_inventory),
-                get_checkbox_html(type_obj.can_store_samples), 
-                get_checkbox_html(type_obj.has_spaces), 
-                grid_display, 
-            ],
-            'actions': actions
-        }
-        table_rows.append(row)
-    
-    context['table_rows'] = table_rows
-
-    return render(request, 'location_configuration/types_tab.html', context)

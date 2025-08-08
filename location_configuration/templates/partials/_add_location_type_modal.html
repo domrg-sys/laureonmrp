@@ -10,7 +10,7 @@
         </button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{% url 'location_configuration:types_tab' %}">
+      <form method="post" action="{% url 'location_configuration:types_tab' %}" novalidate>
           {% csrf_token %}
 
           {# This component still handes the summary of all errors at the top #}

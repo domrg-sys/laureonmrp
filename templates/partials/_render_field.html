@@ -1,4 +1,3 @@
-{# templates/partials/_render_field.html #}
 <div class="form-field {% if field.errors %}has-error{% endif %}">
 
   {# Handle special case for CheckboxSelectMultiple (e.g., ManyToManyField) #}
@@ -25,7 +24,4 @@
   {% if field.help_text %}
     <p class="help-text">{{ field.help_text }}</p>
   {% endif %}
-
-  {# Django renders field.errors inside a <ul class="errorlist"> #}
-  {{ field.errors }}
 </div>

@@ -56,13 +56,18 @@ const clearForm = (form) => {
         errorSummary.remove();
     }
 
+    // Remove the .has-error class from all form fields
+    const errorFields = form.querySelectorAll('.has-error');
+    errorFields.forEach((field) => {
+        field.classList.remove('has-error');
+    });
+
 
   // Finally, specifically reset the Choices.js icon picker instance
   if (iconPickerInstance) {
-    iconPickerInstance.setValue([{ value: '', label: '' }]);
+    iconPickerInstance.setChoiceByValue('warehouse');
   }
 };
-
 
 /**
  * Sets up all modal open/close triggers and handles form resetting.

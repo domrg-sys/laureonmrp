@@ -112,3 +112,26 @@ class EditLocationTypeForm(LocationTypeForm):
         if self.fields['has_spaces'].disabled:
             return self.instance.has_spaces
         return self.cleaned_data.get('has_spaces')
+    
+    def clean(self):
+        """
+        Custom validation to prevent circular dependencies in the hierarchy.
+        """
+        cleaned_data = super().clean()
+        selected_parents = cleaned_data.get('allowed_parents')
+
+        if self.instance and selected_parents:
+            # Check 1: A type cannot be its own parent.
+            if self.instance in selected_parents:
+                raise forms.ValidationError("A location type cannot be its own parent.")
+
+            # Check 2: A type's parent cannot be one of its own descendants.
+            descendants = self.instance.get_all_descendants()
+            for parent in selected_parents:
+                if parent in descendants:
+                    raise forms.ValidationError(
+                        f"Circular dependency detected: You cannot set '{parent.name}' as a parent, "
+                        f"because it is a descendant of this type."
+                    )
+        
+        return cleaned_data

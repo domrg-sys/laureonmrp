@@ -41,7 +41,7 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
     success_url = reverse_lazy('location_configuration:types_tab')
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        context = {} 
         context.update(_prepare_tabs_context('types'))
 
         # If the 'add' form ('form') isn't already in the context, create a fresh one.
@@ -57,8 +57,8 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
             'Stores Samples', 'Has Spaces', 'Grid', 'Actions'
         ]
         context['table_rows'] = self._get_table_rows()
-
-        return context
+        
+        return super().get_context_data(**context, **kwargs)
 
     def post(self, request, *args, **kwargs):
         """
@@ -98,6 +98,9 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
             icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
             is_in_use = type_obj.location_set.exists()
 
+            descendants = type_obj.get_all_descendants()
+            descendant_ids = [desc.pk for desc in descendants]
+
             actions = []
             if can_change:
                 actions.append({
@@ -117,6 +120,8 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
                         'rows': type_obj.rows,
                         'columns': type_obj.columns,
                         'is-in-use': is_in_use,
+                        'descendant_ids': descendant_ids,
+                        'self_id': type_obj.pk
                     })
                 })
             else:
@@ -144,6 +149,6 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
         return table_rows
 
     def _get_checkbox_html(self, checked):
-        """ Private helper method to generate readonly checkbox HTML. """
+        """ Private helper method to generate non-interactive, styled checkbox HTML. """
         checked_attribute = 'checked' if checked else ''
-        return mark_safe(f'<input type="checkbox" disabled class="readonly-checkbox" {checked_attribute}>')
+        return mark_safe(f'<input type="checkbox" class="readonly-checkbox" {checked_attribute}>')

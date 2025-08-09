@@ -51,10 +51,6 @@ function handleConditionalGridFields(container) {
     toggleGridInputs();
     hasSpacesCheckbox.addEventListener('change', toggleGridInputs);
 }
-
-/**
- * Sets up the edit buttons to open the modal and populate it with data.
- */
 /**
  * Sets up the edit buttons to open the modal and populate it with data.
  */
@@ -64,14 +60,34 @@ function initializeEditTypeButtons() {
     if (!modal) return;
 
     const form = modal.querySelector('form');
+    // Find the container for the parent checkboxes and get all the labels
+    const parentsContainer = form.querySelector('input[name="allowed_parents"]').closest('.checkbox-list');
+    if (!parentsContainer) return;
+    const allParentLabels = parentsContainer.querySelectorAll('label');
 
     editButtons.forEach(button => {
         button.addEventListener('click', (event) => {
             event.preventDefault();
 
             // The generic modal script in main.js will have already cleared the form.
-            // We just need to populate it with data.
             const data = JSON.parse(button.dataset.data);
+
+            // --- Logic to dynamically hide/show parent options ---
+            const idsToHide = new Set(data.descendant_ids);
+            idsToHide.add(data.self_id);
+
+            // 1. First, reset the state by showing all parent options.
+            allParentLabels.forEach(label => {
+                label.style.display = 'flex';
+            });
+
+            // 2. Then, hide the invalid ones (the type itself and its descendants).
+            allParentLabels.forEach(label => {
+                const checkbox = label.querySelector('input[type="checkbox"]');
+                if (checkbox && idsToHide.has(parseInt(checkbox.value, 10))) {
+                    label.style.display = 'none';
+                }
+            });
 
             // Populate form fields
             form.querySelector('input[name="location_type_id"]').value = data['location_type_id'];
@@ -104,10 +120,6 @@ function initializeEditTypeButtons() {
 
             // Now that the modal is populated, run the conditional logic for grid fields.
             handleConditionalGridFields(modal);
-
-            // We no longer need to manually open the modal here, as the generic
-            // script in main.js will handle it via the data-modal-target attribute.
-            // modal.classList.add('is-active'); 
         });
     });
 }

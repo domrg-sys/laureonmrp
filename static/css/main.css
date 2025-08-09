@@ -511,12 +511,6 @@ input[type="checkbox"] {
     margin-bottom: 0;
 }
 
-.readonly-checkbox {
-    accent-color: var(--color-secondary-6); /* Set the color you want */
-    opacity: 1; /* Ensure it's not faded */
-    pointer-events: none; /* This makes the element unclickable */
-}
-
 .form-field .help-text {
     text-align: left;
     margin-top: 0.5rem;
@@ -577,9 +571,8 @@ input[type="checkbox"] {
     color: var(--color-gray-3);
 }
 
-.data-table input[type="checkbox"]:disabled {
-    opacity: 1; 
-    accent-color: var(--color-secondary-6); 
+.readonly-checkbox {
+    pointer-events: none;
 }
 
 /* --- Choices.js Icon Picker Customization --- */

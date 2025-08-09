@@ -45,22 +45,6 @@ class LocationType(models.Model):
             
         return descendants
 
-    def clean(self):
-        """
-        Ensures the integrity of the LocationType hierarchy.
-        """
-        # A type cannot be its own parent.
-        if self.pk and self.allowed_parents.filter(pk=self.pk).exists():
-            raise ValidationError("A location type cannot be its own parent.")
-        
-        # A type's parent cannot be one of its own descendants.
-        if self.pk:
-            descendants = self.get_all_descendants()
-            for parent in self.allowed_parents.all():
-                if parent in descendants:
-                    raise ValidationError(f"Circular dependency detected: You cannot set '{parent.name}' as a parent, because it is a descendant of this location type.")
-
-
 class Location(models.Model):
     name = models.CharField(max_length=100)
     location_type = models.ForeignKey(LocationType, on_delete=models.PROTECT)

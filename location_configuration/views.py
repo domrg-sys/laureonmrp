@@ -2,7 +2,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import TemplateView
 from django.urls import reverse, reverse_lazy
 from django.utils.safestring import mark_safe
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
 import json
 
 from core.views import FormHandlingMixin
@@ -44,8 +44,11 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('types'))
 
-        # If the 'edit_form' isn't already in the context (from a failed POST),
-        # create a fresh, unbound instance of it.
+        # If the 'add' form ('form') isn't already in the context, create a fresh one.
+        if 'form' not in context:
+            context['form'] = self.get_form()
+            
+        # If the 'edit_form' isn't already in the context, create a fresh one.
         if 'edit_form' not in context:
             context['edit_form'] = EditLocationTypeForm()
             
@@ -58,25 +61,28 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
         return context
 
     def post(self, request, *args, **kwargs):
-        # Differentiate between add and edit form submissions
+        """
+        Handles POST requests for both adding and editing location types.
+        """
+        # Determine if this is an edit or an add submission.
         if 'edit_form_submit' in request.POST:
             instance = get_object_or_404(LocationType, pk=request.POST.get('location_type_id'))
             form = EditLocationTypeForm(request.POST, instance=instance)
-            if form.is_valid():
-                form.save()
-                return redirect(self.get_success_url())
-            else:
-                # If the form is invalid, re-render the page with the invalid form
-                # so the user can see the errors in the modal.
-                context = self.get_context_data(edit_form=form, edit_form_has_errors=True)
-                return self.render_to_response(context)
-        else: #This is an add form submission
-            return super().post(request, *args, **kwargs)
+        else:
+            form = self.get_form()
+
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            # This now correctly uses the mixin for both forms.
+            return self.form_invalid(form)
 
     def form_valid(self, form):
-        """ This method is called when the ADD form is successfully validated. """
+        """ 
+        This method is called when either the ADD or EDIT form is successfully validated. 
+        """
         form.save()
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
     def _get_table_rows(self):
         """ Private helper method to build and return the table rows. """
@@ -99,7 +105,7 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
                     'icon': 'edit',
                     'label': 'Edit',
                     'class': 'btn-icon-blue edit-type-btn',
-                    'modal_target': '#edit-type-modal',  # <-- Add this line
+                    'modal_target': '#edit-type-modal',
                     'data': json.dumps({
                         'location_type_id': type_obj.pk,
                         'name': type_obj.name,
@@ -114,15 +120,15 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
                     })
                 })
             else:
-                actions.append({'url': '#', 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-disabled'})
+                actions.append({'url': None, 'icon': 'edit', 'label': 'Edit', 'class': 'btn-icon-disable'})
 
             # A user can only delete if they have permission AND the type is not in use.
             can_actually_delete = can_delete_perm and not is_in_use
             actions.append({
-                'url': '#',  # This would eventually point to a delete view
+                'url': '#' if can_actually_delete else None,
                 'icon': 'delete',
                 'label': 'Delete',
-                'class': 'btn-icon-red' if can_actually_delete else 'btn-icon-disabled'
+                'class': 'btn-icon-red' if can_actually_delete else 'btn-icon-disable'
             })
 
             table_rows.append({
@@ -140,4 +146,4 @@ class LocationTypesTabView(PermissionRequiredMixin, FormHandlingMixin, TemplateV
     def _get_checkbox_html(self, checked):
         """ Private helper method to generate readonly checkbox HTML. """
         checked_attribute = 'checked' if checked else ''
-        return mark_safe(f'<input type="checkbox" class="readonly-checkbox" {checked_attribute}>')
+        return mark_safe(f'<input type="checkbox" disabled class="readonly-checkbox" {checked_attribute}>')

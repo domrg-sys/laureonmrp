@@ -2,8 +2,7 @@ import json
 from django.forms.utils import ErrorDict
 from django.shortcuts import redirect
 from django.views.generic.edit import FormMixin
-from django.db.models.query import QuerySet
-from django.forms import ModelMultipleChoiceField
+from django.forms import Form # Import the base Form class
 
 class FormHandlingMixin(FormMixin):
     """
@@ -12,6 +11,9 @@ class FormHandlingMixin(FormMixin):
     It stores form errors and data in the session on POST failure and
     reconstitutes the form on the subsequent GET request. This prevents
     form resubmission on page refresh and keeps the form state.
+    
+    This version is enhanced to handle multiple forms on a single page
+    by using form-specific session keys.
     """
     
     def post(self, request, *args, **kwargs):
@@ -19,6 +21,7 @@ class FormHandlingMixin(FormMixin):
         Handles POST requests, instantiating a form instance with the passed
         POST variables and then validating it.
         """
+        # This method remains the same, but is included for context.
         form = self.get_form()
         if form.is_valid():
             return self.form_valid(form)
@@ -28,13 +31,11 @@ class FormHandlingMixin(FormMixin):
     def form_invalid(self, form):
         """
         If the form is invalid, store the form data and errors in the session
-        and redirect to the success URL.
+        using a key specific to the form class and redirect to the success URL.
         """
-        # Store the name of the form class that failed.
-        self.request.session['failed_form_class'] = self.get_form_class().__name__
-        
-        self.request.session['form_errors'] = form.errors.as_json()
-        self.request.session['form_data'] = form.data
+        form_class_name = type(form).__name__
+        self.request.session[f'form_errors_{form_class_name}'] = form.errors.as_json()
+        self.request.session[f'form_data_{form_class_name}'] = form.data
         
         return redirect(self.get_success_url())
 
@@ -45,31 +46,37 @@ class FormHandlingMixin(FormMixin):
         this form was the one that previously failed.
         """
         kwargs = super().get_form_kwargs()
+        form_class_name = self.get_form_class().__name__
         
-        # On GET, check if this form class was the one that failed.
-        failed_form_class = self.request.session.get('failed_form_class')
-        if self.request.method == 'GET' and failed_form_class == self.get_form_class().__name__:
-            kwargs['data'] = self.request.session.pop('form_data', None)
+        if self.request.method == 'GET':
+            session_data = self.request.session.pop(f'form_data_{form_class_name}', None)
+            if session_data:
+                kwargs['data'] = session_data
         
         return kwargs
 
     def get_context_data(self, **kwargs):
         """
-        Insert the form into the context dictionary. If there were errors
-        in the session for this specific form, they are loaded into the form instance.
+        Inserts forms into the context. If there were errors in the session
+        for a specific form, they are loaded into the corresponding form instance.
         """
         context = super().get_context_data(**kwargs)
-        form = context.get('form')
-        
-        if form:
-            failed_form_class = self.request.session.get('failed_form_class')
-            # Only load errors if they belong to this form.
-            if failed_form_class == type(form).__name__:
-                form_errors = self.request.session.pop('form_errors', None)
-                # Clear the flag since we're consuming the error state.
-                self.request.session.pop('failed_form_class', None)
-                if form_errors:
-                    errors = json.loads(form_errors)
-                    form._errors = ErrorDict(errors)
+
+        # Iterate over all items in the context dictionary.
+        for form_name, form_instance in context.items():
+            # **FIXED LINE**: Check if the item is an instance of a Django Form.
+            if isinstance(form_instance, Form):
+                form_class_name = type(form_instance).__name__
+                
+                # Check for session errors for this specific form class.
+                form_errors_json = self.request.session.pop(f'form_errors_{form_class_name}', None)
+                
+                if form_errors_json:
+                    errors = json.loads(form_errors_json)
+                    form_instance._errors = ErrorDict(errors)
+                    
+                    # Add a flag to the context to indicate which form had errors.
+                    # This helps the template decide whether to show the modal on load.
+                    context[f'{form_name}_has_errors'] = True
         
         return context

@@ -1,99 +1,66 @@
 /**
- * A variable to hold the Choices.js instance for our icon picker.
- * This makes it accessible to other functions that need to interact with it.
- */
-let iconPickerInstance = null;
-let editIconPickerInstance = null;
-
-/**
- * Main entry point for all JavaScript on the site.
+ * main.js
+ *
+ * Generic, site-wide UI infrastructure. This file sets up basic behaviors
+ * for common UI patterns like modals and tab sliders based on data-attributes
+ * and standard class names. It is not specific to any single app.
  */
 document.addEventListener("DOMContentLoaded", () => {
-  initializeIconPicker(); // Initialize the picker first so the instance is ready.
-  initializeModals();
+  initializeModalToggles();
   handleTabSlider();
 });
 
 
-// --- FUNCTION DEFINITIONS ---
-
 /**
- * A custom function to manually clear all fields in a form.
- * This is more robust than form.reset() for our use case.
- * @param {HTMLFormElement} form The form element to clear.
+ * Sets up generic open/close triggers for all modals on the site.
+ * - It finds any element with a `data-modal-target` attribute and makes it open a modal.
+ * - It finds any element with a `.modal-close` class or `.modal-overlay` and makes it close the modal.
  */
-const clearForm = (form) => {
-  const elements = form.elements;
-
-  for (let i = 0; i < elements.length; i++) {
-    const field = elements[i];
-    const type = field.type.toLowerCase();
-    const tagName = field.tagName.toLowerCase();
-
-    // Skip fields that shouldn't be cleared automatically
-    if (type === 'hidden' || type === 'submit' || type === 'button' || type === 'reset' || type === 'file') {
-      continue;
-    }
-
-    if (type === 'checkbox' || type === 'radio') {
-      field.checked = false;
-    } else if (tagName === 'select' && !field.classList.contains('js-choice-icon-picker')) {
-      field.selectedIndex = -1;
-    } else {
-      field.value = '';
-    }
-  }
-
-  // Remove any existing error messages
-  const errorSummary = form.querySelector('.form-error-summary');
-  if (errorSummary) errorSummary.remove();
-  form.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
-  form.querySelectorAll('input, select').forEach(el => el.disabled = false);
-};
-
-/**
- * Sets up all modal open/close triggers and handles form resetting.
- */
-function initializeModals() {
+function initializeModalToggles() {
+  // Function to open a modal
   const openModal = ($el) => {
-    $el.classList.add("is-active");
+    if ($el) $el.classList.add("is-active");
   };
 
+  // Function to close a modal
   const closeModal = ($el) => {
-    $el.classList.remove("is-active");
+    if ($el) $el.classList.remove("is-active");
   };
 
-  // Setup triggers to open modals on click (for non-edit buttons)
+  // Find all buttons that are meant to open a modal
   document.querySelectorAll("[data-modal-target]").forEach(($trigger) => {
     const modalId = $trigger.dataset.modalTarget;
     const $target = document.querySelector(modalId);
     if ($target) {
       $trigger.addEventListener("click", () => {
-        const form = $target.querySelector('form');
-        if (form) clearForm(form);
         openModal($target);
       });
     }
   });
 
-  // Setup triggers to close modals.
-  document.querySelectorAll(".modal-overlay").forEach(($overlay) => {
-    $overlay.addEventListener("click", (event) => {
-      if (event.target.classList.contains('modal-overlay') || event.target.closest('.modal-close')) {
-        closeModal($overlay);
-      }
-    });
-
-    // Check on page load if a modal should be open due to form errors.
-    if ($overlay.hasAttribute('data-is-open-on-load')) {
-        openModal($overlay);
+  // Find all elements that can close a modal
+  document.querySelectorAll(".modal-overlay, .modal-close").forEach(($closeTrigger) => {
+    // Find the parent modal for this trigger
+    const $modal = $closeTrigger.closest('.modal-overlay');
+    if ($modal) {
+        $closeTrigger.addEventListener("click", (event) => {
+            // Ensure we don't close the modal when clicking inside the content
+            if (event.target === $closeTrigger) {
+                 closeModal($modal);
+            }
+        });
     }
+  });
+
+  // Handle modals that need to be open on page load (due to form errors)
+  document.querySelectorAll('.modal-overlay[data-is-open-on-load]').forEach(modal => {
+      openModal(modal);
   });
 }
 
-
 /**
  * Manages the animated slider for tab navigation.
+ * This function is already generic and requires no changes.
  */
 function handleTabSlider() {
     const nav = document.querySelector('.tab-nav');
@@ -114,35 +81,37 @@ function handleTabSlider() {
 }
 
 /**
- * Initializes the Choices.js icon picker and stores its instance.
+ * A robust utility function to clear all fields in a form.
+ * We are attaching it to the global 'window' object so that other,
+ * more specific scripts can access and use it when needed.
  */
-function initializeIconPicker() {
-    const initChoices = (selector) => {
-        const element = document.querySelector(selector);
-        if (!element) return null;
-        return new Choices(element, {
-            searchEnabled: false,
-            callbackOnCreateTemplates: function (template) {
-                return {
-                    item: ({ classNames }, data) => {
-                        return template(`
-                            <div class="${classNames.item}" data-item data-id="${data.id}" data-value="${data.value}">
-                                <span class="material-symbols-outlined">${data.value}</span>
-                            </div>
-                        `);
-                    },
-                    choice: ({ classNames }, data) => {
-                         return template(`
-                            <div class="${classNames.item} ${classNames.itemChoice} ${data.disabled ? classNames.itemDisabled : ''} ${data.highlighted ? classNames.highlightedState : ''}" data-select-text="" data-choice data-id="${data.id}" data-value="${data.value}" role="option">
-                                <span class="material-symbols-outlined">${data.value}</span>
-                            </div>
-                        `);
-                    },
-                };
-            },
-        });
-    };
+window.uiUtils = {
+  clearForm: (form) => {
+    if (!form) return;
+    const elements = form.elements;
 
-    iconPickerInstance = initChoices('#add-type-modal .js-choice-icon-picker');
-    editIconPickerInstance = initChoices('#edit-type-modal .js-choice-icon-picker');
-}
+    for (let i = 0; i < elements.length; i++) {
+      const field = elements[i];
+      const type = field.type.toLowerCase();
+      const tagName = field.tagName.toLowerCase();
+
+      if (type === 'hidden' || type === 'submit' || type === 'button' || type === 'reset' || type === 'file') {
+        continue;
+      }
+
+      if (type === 'checkbox' || type === 'radio') {
+        field.checked = false;
+      } else if (tagName === 'select') {
+        field.selectedIndex = -1; // Works for standard selects
+      } else {
+        field.value = '';
+      }
+    }
+
+    // Remove any existing error messages from a previous submission
+    const errorSummary = form.querySelector('.form-error-summary');
+    if (errorSummary) errorSummary.remove();
+    form.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
+    form.querySelectorAll('input, select').forEach(el => el.disabled = false);
+  }
+};

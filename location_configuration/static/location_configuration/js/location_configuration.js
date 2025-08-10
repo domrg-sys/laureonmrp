@@ -2,8 +2,8 @@
  * location_configuration.js
  *
  * Contains all JavaScript logic specific to the Location Configuration app.
- * This includes initializing icon pickers, clearing the 'add' form,
- * populating the 'edit' form, and handling conditional field logic.
+ * This includes initializing icon pickers, populating the 'edit' form,
+ * and handling conditional field logic.
  */
 
 // --- Global variables to hold the icon picker instances ---
@@ -69,6 +69,9 @@ function initializeLocationConfigModals() {
     const addModal = document.querySelector('#add-type-modal');
 
     if (addModalTrigger && addModal) {
+        // MODIFICATION: The click listener's only job is to ensure the form is
+        // pristine for a *new* entry. It should NOT run when the modal is
+        // opened by the backend due to an error.
         addModalTrigger.addEventListener('click', () => {
             const form = addModal.querySelector('form');
             // Use the generic utility from main.js to clear the form.

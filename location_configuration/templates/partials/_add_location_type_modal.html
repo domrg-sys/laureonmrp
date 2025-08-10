@@ -1,30 +1,35 @@
-{% load component_tags %}
-{% load form_tags %}
+<div class="modal-overlay" id="add-type-modal" {% if add_form_has_errors %}data-is-open-on-load{% endif %}>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Add New Location Type</h5>
+            <button type="button" class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% include "partials/_form_error_summary.html" with form=add_form %}
+                
+                {% render_field add_form.name %}
+                {% render_field add_form.icon %}
+                {% render_field add_form.allowed_parents %}
+                
+                <div class="checkbox-group">
+                    {% render_field add_form.can_store_inventory %}
+                    {% render_field add_form.can_store_samples %}
+                    {% render_field add_form.has_spaces %}
+                </div>
 
-<div class="modal-overlay" id="add-type-modal" {% if has_errors %}data-is-open-on-load{% endif %}>
-  <div class="modal-content">
-    <div class="modal-header">
-        <h2 class="modal-title">Add New Location Type</h2>
-        <button class="modal-close btn-icon btn-icon-red" aria-label="Close modal">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+                <div class="grid-inputs">
+                    {% render_field add_form.rows %}
+                    {% render_field add_form.columns %}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-green">Save Location Type</button>
+                </div>
+            </form>
+        </div>
     </div>
-    <div class="modal-body">
-      <form method="post" action="{% url 'location_configuration:types_tab' %}" novalidate>
-          {% csrf_token %}
-
-          {# This component still handes the summary of all errors at the top #}
-          {% form_error_summary form %}
-
-          {# --- Render All Form Fields Automatically --- #}
-          {% for field in form %}
-            {% render_field field %}
-          {% endfor %}
-
-          <div class="form-actions">
-              <button type="submit" class="btn btn-green">Save</button>
-          </div>
-      </form>
-    </div>
-  </div>
 </div>

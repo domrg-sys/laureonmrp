@@ -20,9 +20,9 @@ class GenericFormHandlingMixin:
 
     def form_invalid(self, form, form_name):
         """
-        MODIFIED: Now accepts a 'form_name' to create a truly unique session key.
+        Stores form data and errors in the session using a unique key based
+        on the form's context name.
         """
-        # Use the provided form_name for the session key
         self.request.session[f'form_errors_{form_name}'] = form.errors.as_json()
         self.request.session[f'form_data_{form_name}'] = form.data
         
@@ -30,32 +30,37 @@ class GenericFormHandlingMixin:
 
     def get_context_data(self, **kwargs):
         """
-        MODIFIED: Now looks up session data using the form's specific context name.
+        MODIFIED: Now adds a '{form_name}_has_errors' flag to the context if a
+        form is being restored from a failed submission. This allows the template
+        to signal the frontend JavaScript to open the correct modal on page load.
         """
         context = super().get_context_data(**kwargs)
 
-        # Iterate over a copy of context items to avoid runtime errors
         for form_name, form_instance in list(context.items()):
             if isinstance(form_instance, Form):
-                # Use the form's context name to build the key to look for
                 form_errors_key = f'form_errors_{form_name}'
                 form_data_key = f'form_data_{form_name}'
 
-                form_errors_json = self.request.session.pop(form_errors_key, None)
-                session_data = self.request.session.pop(form_data_key, None)
+                # Check for session data without removing it yet.
+                form_errors_json = self.request.session.get(form_errors_key)
+                session_data = self.request.session.get(form_data_key)
 
                 if form_errors_json and session_data:
-                    # An error was found for this form. We must restore its state.
+                    # Now that we know we need it, remove the data from the session.
+                    self.request.session.pop(form_errors_key, None)
+                    self.request.session.pop(form_data_key, None)
+
+                    # Re-create the form with the failed data and errors.
                     instance = getattr(form_instance, 'instance', None)
-                    
-                    # Re-create the form, binding it with the failed data
                     rebound_form = type(form_instance)(data=session_data, instance=instance)
-                    
-                    # Attach the errors
                     errors = json.loads(form_errors_json)
                     rebound_form._errors = ErrorDict(errors)
                     
-                    # Replace the original form in the context with our newly rebound one
+                    # Replace the blank form in the context with the restored one.
                     context[form_name] = rebound_form
+                    
+                    # THIS IS THE KEY FIX: Add the flag to the context.
+                    # e.g., context['add_form_has_errors'] = True
+                    context[f'{form_name}_has_errors'] = True
         
         return context

@@ -38,16 +38,22 @@ function initializeModalToggles() {
     }
   });
 
-  // Find all elements that can close a modal
-  document.querySelectorAll(".modal-overlay, .modal-close").forEach(($closeTrigger) => {
-    // Find the parent modal for this trigger
-    const $modal = $closeTrigger.closest('.modal-overlay');
+  // Handle closing by clicking the background overlay
+  document.querySelectorAll(".modal-overlay").forEach(($overlay) => {
+    $overlay.addEventListener("click", (event) => {
+      // Only close if the overlay itself was clicked, not its children
+      if (event.target === $overlay) {
+        closeModal($overlay);
+      }
+    });
+  });
+
+  // Handle closing by clicking the dedicated 'X' button
+  document.querySelectorAll(".modal-close").forEach(($closeButton) => {
+    const $modal = $closeButton.closest('.modal-overlay');
     if ($modal) {
-        $closeTrigger.addEventListener("click", (event) => {
-            // Ensure we don't close the modal when clicking inside the content
-            if (event.target === $closeTrigger) {
-                 closeModal($modal);
-            }
+        $closeButton.addEventListener("click", () => {
+            closeModal($modal);
         });
     }
   });

@@ -64,45 +64,42 @@ function initializeIconPickers() {
  * Sets up all page-specific modal behaviors, including form clearing and populating.
  */
 function initializeLocationConfigModals() {
+    const addModal = document.querySelector('#add-type-modal');
+    const editModal = document.querySelector('#edit-type-modal');
+
     // --- Behavior for the "Add" Modal ---
     const addModalTrigger = document.querySelector('[data-modal-target="#add-type-modal"]');
-    const addModal = document.querySelector('#add-type-modal');
-
     if (addModalTrigger && addModal) {
-        // MODIFICATION: The click listener's only job is to ensure the form is
-        // pristine for a *new* entry. It should NOT run when the modal is
-        // opened by the backend due to an error.
         addModalTrigger.addEventListener('click', () => {
             const form = addModal.querySelector('form');
-            // Use the generic utility from main.js to clear the form.
             if (form && window.uiUtils) {
                 window.uiUtils.clearForm(form);
             }
-            // Reset the icon picker to its default value.
             if (addIconPickerInstance) {
                 addIconPickerInstance.setChoiceByValue('warehouse'); 
             }
-            // Ensure conditional fields are set correctly for a fresh form.
             handleConditionalGridFields(addModal);
         });
-    }
-    // Also run for the 'add' modal on initial page load in case of validation errors.
-    if (addModal) {
-      handleConditionalGridFields(addModal);
     }
 
     // --- Behavior for the "Edit" Modal ---
     const editButtons = document.querySelectorAll('.edit-type-btn');
-    const editModal = document.querySelector('#edit-type-modal');
-
     if (editButtons.length > 0 && editModal) {
         const form = editModal.querySelector('form');
         editButtons.forEach(button => {
             button.addEventListener('click', () => {
-                // The generic open/close is handled by main.js. This is for populating data.
                 populateEditForm(form, button.dataset.data);
             });
         });
+    }
+
+    // --- Run conditional logic on page load for BOTH modals ---
+    // This ensures fields are correctly disabled if a form is re-rendered with errors.
+    if (addModal) {
+      handleConditionalGridFields(addModal);
+    }
+    if (editModal) {
+      handleConditionalGridFields(editModal);
     }
 }
 
@@ -117,7 +114,6 @@ function initializeLocationConfigModals() {
 function populateEditForm(form, jsonData) {
     if (!form || !jsonData) return;
 
-    // First, clear any previous state from the form.
     if (window.uiUtils) {
         window.uiUtils.clearForm(form);
     }
@@ -155,7 +151,7 @@ function populateEditForm(form, jsonData) {
     }
 
     // Now that the modal is populated, run the conditional logic for its grid fields.
-    handleConditionalGridFields(editModal);
+    handleConditionalGridFields(form.closest('.modal-overlay'));
 }
 
 
@@ -164,6 +160,7 @@ function populateEditForm(form, jsonData) {
  * @param {HTMLElement} container The container element (e.g., a modal).
  */
 function handleConditionalGridFields(container) {
+    if (!container) return;
     const hasSpacesCheckbox = container.querySelector('input[name="has_spaces"]');
     const rowsInput = container.querySelector('input[name="rows"]');
     const colsInput = container.querySelector('input[name="columns"]');

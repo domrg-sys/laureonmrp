@@ -136,6 +136,8 @@ class LocationTypeForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             selected_parents = cleaned_data.get('allowed_parents')
             if selected_parents:
+                # This check prevents a user from making a type a child of its own descendant.
+                # It serves as a backend safeguard in case the 'disabled' attribute is bypassed.
                 descendants = self.instance.get_all_descendants()
                 for parent in selected_parents:
                     if parent in descendants:
@@ -144,4 +146,3 @@ class LocationTypeForm(forms.ModelForm):
                         )
         
         return cleaned_data
-

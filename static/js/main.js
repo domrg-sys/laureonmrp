@@ -4,49 +4,70 @@
  * and standard class names. It is not specific to any single app.
  */
 document.addEventListener("DOMContentLoaded", () => {
-  initializeModalToggles();
+  initializeModalSystem();
   handleTabSlider();
 });
 
-
 /**
- * Sets up generic open/close triggers for all modals on the site.
- * - It finds any element with a `data-modal-target` attribute and makes it open a modal.
- * - It finds any element with a `.modal-close` class or `.modal-overlay` and makes it close the modal.
+ * A single, unified function to handle all modal logic, including the 
+ * special case for the delete confirmation pop-up.
  */
-function initializeModalToggles() {
-  // Function to open a modal
+function initializeModalSystem() {
+  // Helper functions
   const openModal = ($el) => {
     if ($el) $el.classList.add("is-active");
   };
 
-  // Function to close a modal
   const closeModal = ($el) => {
     if ($el) $el.classList.remove("is-active");
   };
 
-  // Find all buttons that are meant to open a modal
-  document.querySelectorAll("[data-modal-target]").forEach(($trigger) => {
+  // --- Initialize All Modal Triggers ---
+  document.querySelectorAll('[data-modal-target]').forEach(($trigger) => {
     const modalId = $trigger.dataset.modalTarget;
-    const $target = document.querySelector(modalId);
-    if ($target) {
-      $trigger.addEventListener("click", () => {
-        openModal($target);
+    const $targetModal = document.querySelector(modalId);
+
+    if ($targetModal) {
+      $trigger.addEventListener('click', (event) => {
+        // This is the most important part: prevent the default link behavior
+        event.preventDefault();
+
+        // --- Handle the special case for the delete modal ---
+        if (modalId === '#delete-confirmation-modal') {
+          const dataStr = $trigger.dataset.actionInfo;
+          if (dataStr) {
+            try {
+              const data = JSON.parse(dataStr);
+              const form = $targetModal.querySelector('form');
+              const itemNameSpan = $targetModal.querySelector('#delete-item-name');
+              const successUrlInput = $targetModal.querySelector('#delete-success-url');
+
+              // Populate the modal form with data from the button
+              if (form) form.setAttribute('action', `/core/delete/${data.app_label}/${data.model_name}/${data.pk}/`);
+              if (successUrlInput) successUrlInput.value = data.success_url;
+              if (itemNameSpan) itemNameSpan.textContent = data.item_name || 'this item';
+            } catch (e) {
+              console.error("Failed to parse delete data:", e);
+              return; // Exit if data is invalid
+            }
+          }
+        }
+
+        // Open the target modal. For delete, it's now populated; for others, it's empty.
+        openModal($targetModal);
       });
     }
   });
 
-  // Handle closing by clicking the background overlay
+  // --- Handle Closing Modals ---
   document.querySelectorAll(".modal-overlay").forEach(($overlay) => {
     $overlay.addEventListener("click", (event) => {
-      // Only close if the overlay itself was clicked, not its children
       if (event.target === $overlay) {
         closeModal($overlay);
       }
     });
   });
 
-  // Handle closing by clicking the dedicated 'X' button
   document.querySelectorAll(".modal-close").forEach(($closeButton) => {
     const $modal = $closeButton.closest('.modal-overlay');
     if ($modal) {
@@ -55,8 +76,8 @@ function initializeModalToggles() {
         });
     }
   });
-
-  // Handle modals that need to be open on page load (due to form errors)
+  
+  // --- Handle Modals That Open on Page Load ---
   document.querySelectorAll('.modal-overlay[data-is-open-on-load]').forEach(modal => {
       openModal(modal);
   });
@@ -64,7 +85,6 @@ function initializeModalToggles() {
 
 /**
  * Manages the animated slider for tab navigation.
- * This function is already generic and requires no changes.
  */
 function handleTabSlider() {
     const nav = document.querySelector('.tab-nav');
@@ -84,45 +104,11 @@ function handleTabSlider() {
     window.addEventListener('resize', moveSlider);
 }
 
-/**
- * Sets up the generic delete confirmation modal.
- * It populates the modal's form with the correct action URL and item details
- * based on the data attributes of the button that was clicked.
- */
-function initializeDeleteConfirmationModal() {
-  const modal = document.getElementById('delete-confirmation-modal');
-  if (!modal) return;
-
-  const form = modal.querySelector('form');
-  const itemNameSpan = modal.querySelector('#delete-item-name');
-  const successUrlInput = modal.querySelector('#delete-success-url');
-
-  document.body.addEventListener('click', (event) => {
-    const trigger = event.target.closest('[data-modal-target="#delete-confirmation-modal"]');
-    
-    if (!trigger) return;
-
-    const dataStr = trigger.dataset.deleteInfo;
-    if (!dataStr) return;
-
-    const data = JSON.parse(dataStr);
-    
-    // Construct the URL for the form's action attribute
-    const actionUrl = `/core/delete/${data.app_label}/${data.model_name}/${data.pk}/`;
-    form.setAttribute('action', actionUrl);
-
-    // Populate the hidden input for the redirect URL
-    successUrlInput.value = data.success_url;
-
-    // Display the name of the item being deleted for confirmation
-    itemNameSpan.textContent = data.item_name || 'this item';
-  });
-}
 
 /**
  * A robust utility function to clear all fields in a form.
- * We are attaching it to the global 'window' object so that other,
- * more specific scripts can access and use it when needed.
+ * This is being attached to the global 'window' object so that other,
+ * more specific scripts (like location_configuration.js) can use it.
  */
 window.uiUtils = {
   clearForm: (form) => {
@@ -141,7 +127,7 @@ window.uiUtils = {
       if (type === 'checkbox' || type === 'radio') {
         field.checked = false;
       } else if (tagName === 'select') {
-        field.selectedIndex = -1; // Works for standard selects
+        field.selectedIndex = -1; 
       } else {
         field.value = '';
       }

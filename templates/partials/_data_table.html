@@ -21,10 +21,10 @@
                                 {# If the action has a URL, it's a clickable link #}
                                 {% if action.url %}
                                     <a href="{{ action.url }}" 
-                                       class="btn-icon {{ action.class }}" 
-                                       title="{{ action.label }}"
-                                       {% if action.modal_target %}data-modal-target="{{ action.modal_target }}"{% endif %}
-                                       data-delete-info='{{ action.data }}'>
+                                    class="btn-icon {{ action.class }}" 
+                                    title="{{ action.label }}"
+                                    {% if action.modal_target %}data-modal-target="{{ action.modal_target }}"{% endif %}
+                                    {% if action.data %}data-action-info='{{ action.data }}'{% endif %}>
                                         <span class="material-symbols-outlined">{{ action.icon }}</span>
                                     </a>
                                 {# Otherwise, it's a disabled span #}

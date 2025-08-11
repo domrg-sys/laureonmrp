@@ -88,7 +88,7 @@ function initializeLocationConfigModals() {
         const form = editModal.querySelector('form');
         editButtons.forEach(button => {
             button.addEventListener('click', () => {
-                populateEditForm(form, button.dataset.data);
+                populateEditForm(form, button.dataset.actionInfo);
             });
         });
     }

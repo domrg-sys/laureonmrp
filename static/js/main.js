@@ -102,7 +102,7 @@ function initializeDeleteConfirmationModal() {
     
     if (!trigger) return;
 
-    const dataStr = trigger.dataset.data;
+    const dataStr = trigger.dataset.deleteInfo;
     if (!dataStr) return;
 
     const data = JSON.parse(dataStr);

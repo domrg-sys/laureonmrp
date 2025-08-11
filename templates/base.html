@@ -42,6 +42,17 @@
 
     <!-- Main Content Area       -->
     <main class="main-content">
+        <!-- Django Messages Framework -->
+        {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}">
+                        {{ message }}
+                        <button type="button" class="message-close" onclick="this.parentElement.style.display='none'">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
         <div class="content-card">
             
             <!-- Page Header inside the card -->

@@ -120,7 +120,28 @@ function populateEditForm(form, jsonData) {
     
     const data = JSON.parse(jsonData);
 
-    // Populate standard text/hidden fields
+    // --- Handle Parent Checkboxes ---
+    // First, reset all checkboxes to be visible. This is crucial when opening
+    // the modal for different items consecutively.
+    const allParentCheckboxes = form.querySelectorAll('.checkbox-list label');
+    allParentCheckboxes.forEach(label => {
+        label.style.display = ''; // Use an empty string to reset to default CSS display
+    });
+
+    // Now, hide the labels for invalid parent IDs.
+    if (data.invalid_parent_ids) {
+        data.invalid_parent_ids.forEach(parentId => {
+            const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
+            if (checkbox) {
+                const label = checkbox.closest('label');
+                if (label) {
+                    label.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // --- Populate Standard Fields ---
     form.querySelector('input[name="location_type_id"]').value = data.location_type_id;
     form.querySelector('input[name="name"]').value = data.name;
     form.querySelector('input[name="rows"]').value = data.rows || '';
@@ -131,7 +152,7 @@ function populateEditForm(form, jsonData) {
         editIconPickerInstance.setChoiceByValue(data.icon || 'warehouse');
     }
     
-    // Check the correct parent checkboxes
+    // Check the correct parent checkboxes from the allowed list
     if (data.allowed_parents) {
         data.allowed_parents.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);

@@ -1,6 +1,4 @@
 /**
- * main.js
- *
  * Generic, site-wide UI infrastructure. This file sets up basic behaviors
  * for common UI patterns like modals and tab sliders based on data-attributes
  * and standard class names. It is not specific to any single app.
@@ -84,6 +82,41 @@ function handleTabSlider() {
 
     moveSlider();
     window.addEventListener('resize', moveSlider);
+}
+
+/**
+ * Sets up the generic delete confirmation modal.
+ * It populates the modal's form with the correct action URL and item details
+ * based on the data attributes of the button that was clicked.
+ */
+function initializeDeleteConfirmationModal() {
+  const modal = document.getElementById('delete-confirmation-modal');
+  if (!modal) return;
+
+  const form = modal.querySelector('form');
+  const itemNameSpan = modal.querySelector('#delete-item-name');
+  const successUrlInput = modal.querySelector('#delete-success-url');
+
+  document.body.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-modal-target="#delete-confirmation-modal"]');
+    
+    if (!trigger) return;
+
+    const dataStr = trigger.dataset.data;
+    if (!dataStr) return;
+
+    const data = JSON.parse(dataStr);
+    
+    // Construct the URL for the form's action attribute
+    const actionUrl = `/core/delete/${data.app_label}/${data.model_name}/${data.pk}/`;
+    form.setAttribute('action', actionUrl);
+
+    // Populate the hidden input for the redirect URL
+    successUrlInput.value = data.success_url;
+
+    // Display the name of the item being deleted for confirmation
+    itemNameSpan.textContent = data.item_name || 'this item';
+  });
 }
 
 /**

@@ -9,6 +9,7 @@ import json
 from core.views import GenericFormHandlingMixin
 from .forms import LocationTypeForm
 from .models import LocationType
+from collections import deque
 
 TABS = [
     {'slug': 'locations', 'label': 'Locations', 'url_name': 'location_configuration:locations_tab'},
@@ -106,7 +107,41 @@ class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Te
 
     def _get_table_rows(self):
         table_rows = []
-        location_types = LocationType.objects.prefetch_related('allowed_parents').all()
+        all_types = LocationType.objects.prefetch_related('allowed_parents').all()
+
+        in_degree = {t.id: 0 for t in all_types}
+        child_map = {t.id: [] for t in all_types}
+        type_map = {t.id: t for t in all_types}
+
+        for t in all_types:
+            for parent in t.allowed_parents.all():
+                if t.id in in_degree: in_degree[t.id] += 1
+                if parent.id in child_map: child_map[parent.id].append(t.id)
+
+        root_nodes = [t_id for t_id, degree in in_degree.items() if degree == 0]
+        sorted_root_nodes = sorted(root_nodes, key=lambda t_id: type_map[t_id].name)
+
+        queue = deque(sorted_root_nodes)
+        sorted_types = []
+
+        visited_in_sort = set()
+        while queue:
+            current_id = queue.popleft()
+            if current_id in visited_in_sort: continue
+            visited_in_sort.add(current_id)
+
+            sorted_types.append(type_map[current_id])
+
+            sorted_children = sorted(child_map.get(current_id, []), key=lambda t_id: type_map[t_id].name)
+            for child_id in sorted_children:
+                in_degree[child_id] -= 1
+                if in_degree[child_id] == 0:
+                    queue.append(child_id)
+
+        # If a cycle exists, this adds the remaining items to the end
+        remaining_types = [t for t in all_types if t.id not in visited_in_sort]
+        location_types = sorted_types + sorted(remaining_types, key=lambda t: t.name)
+        
         can_change = self.request.user.has_perm('location_configuration.change_locationtype')
         can_delete_perm = self.request.user.has_perm('location_configuration.delete_locationtype')
 
@@ -115,6 +150,10 @@ class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Te
             grid_display = f"{type_obj.rows}x{type_obj.columns}" if type_obj.rows and type_obj.columns else "—"
             icon_html = mark_safe(f'<span class="material-symbols-outlined">{type_obj.icon}</span>') if type_obj.icon else "—"
             is_in_use = type_obj.location_set.exists()
+            
+            # Get the IDs of the instance itself and all its descendants to prevent circular dependencies
+            descendants = type_obj.get_all_descendants()
+            invalid_parent_ids = {type_obj.pk} | {desc.pk for desc in descendants}
 
             actions = []
             if can_change:
@@ -129,7 +168,8 @@ class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Te
                         'icon': type_obj.icon, 'allowed_parents': [p.pk for p in type_obj.allowed_parents.all()],
                         'can_store_inventory': type_obj.can_store_inventory, 'can_store_samples': type_obj.can_store_samples,
                         'has_spaces': type_obj.has_spaces, 'rows': type_obj.rows, 'columns': type_obj.columns,
-                        'is-in-use': is_in_use
+                        'is-in-use': is_in_use,
+                        'invalid_parent_ids': list(invalid_parent_ids)
                     })
                 })
             else:
@@ -140,7 +180,15 @@ class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Te
                 'url': '#' if can_actually_delete else None,
                 'icon': 'delete',
                 'label': 'Delete',
-                'class': 'btn-icon-red' if can_actually_delete else 'btn-icon-disable'
+                'class': 'btn-icon-red' if can_actually_delete else 'btn-icon-disable',
+                'modal_target': '#delete-confirmation-modal' if can_actually_delete else '',
+                'data': json.dumps({
+                    'app_label': 'location_configuration',
+                    'model_name': 'LocationType',
+                    'pk': type_obj.pk,
+                    'item_name': type_obj.name,
+                    'success_url': reverse('location_configuration:types_tab')
+                }) if can_actually_delete else ''
             })
 
             table_rows.append({

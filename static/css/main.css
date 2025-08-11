@@ -361,7 +361,7 @@ body {
     color: var(--color-gray-5);
 }
 
-.modal-close {
+.modal-header .modal-close {
   position: absolute;
   top: 8px;
   right: 8px;

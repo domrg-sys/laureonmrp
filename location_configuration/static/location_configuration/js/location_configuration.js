@@ -68,30 +68,41 @@ function initializeLocationConfigModals() {
     const editModal = document.querySelector('#edit-type-modal');
 
     // --- Behavior for the "Add" Modal ---
-    const addModalTrigger = document.querySelector('[data-modal-target="#add-type-modal"]');
-    if (addModalTrigger && addModal) {
-        addModalTrigger.addEventListener('click', () => {
-            const form = addModal.querySelector('form');
-            if (form && window.uiUtils) {
-                window.uiUtils.clearForm(form);
-            }
-            if (addIconPickerInstance) {
-                addIconPickerInstance.setChoiceByValue('warehouse'); 
-            }
-            handleConditionalGridFields(addModal);
+    // The main.js script now handles the click and opening of the modal.
+    // We just need to ensure that if the modal is opened, the form is cleared.
+    if (addModal) {
+        // We listen for the 'is-active' class change, which is more reliable.
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                if (mutation.attributeName === 'class' && addModal.classList.contains('is-active')) {
+                    const form = addModal.querySelector('form');
+                    if (form && window.uiUtils) {
+                        window.uiUtils.clearForm(form);
+                    }
+                    if (addIconPickerInstance) {
+                        addIconPickerInstance.setChoiceByValue('warehouse'); 
+                    }
+                    handleConditionalGridFields(addModal);
+                }
+            });
         });
+        observer.observe(addModal, { attributes: true });
     }
 
     // --- Behavior for the "Edit" Modal ---
-    const editButtons = document.querySelectorAll('.edit-type-btn');
-    if (editButtons.length > 0 && editModal) {
+    // This is the key change. We are no longer adding a click listener to each button.
+    // The generic modal handler in main.js will open the modal. Our job is to populate it.
+    // We can piggyback on the same click event that main.js is listening for.
+    document.addEventListener('click', function(event) {
+        // Find the button that was clicked, if it was an edit button
+        const editButton = event.target.closest('.edit-type-btn');
+        if (!editButton) return;
+
+        // If an edit button was clicked, populate the form.
         const form = editModal.querySelector('form');
-        editButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                populateEditForm(form, button.dataset.actionInfo);
-            });
-        });
-    }
+        populateEditForm(form, editButton.dataset.actionInfo);
+    });
+
 
     // --- Run conditional logic on page load for BOTH modals ---
     // This ensures fields are correctly disabled if a form is re-rendered with errors.
@@ -102,7 +113,6 @@ function initializeLocationConfigModals() {
       handleConditionalGridFields(editModal);
     }
 }
-
 
 // --- Logic Functions ---
 

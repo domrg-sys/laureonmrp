@@ -1,0 +1,23 @@
+<div class="modal-overlay" id="delete-confirmation-modal">
+    <div class="modal-content">
+        <form method="post" action="">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>                   
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-item-name">this item</strong>? This action cannot be undone.</p>
+                
+                {# This hidden input will be populated by JS with the redirect URL #}
+                <input type="hidden" name="success_url" id="delete-success-url" value="">
+            </div>
+            <div class="modal-footer">
+                {# This "Cancel" button in the footer handles the closing action. #}
+                <button type="button" class="btn btn-gray modal-close">Cancel</button>
+                
+                {# The "Delete" button submits the form to the URL set by JS #}
+                <button type="submit" class="btn btn-red">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>

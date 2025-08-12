@@ -1,0 +1,22 @@
+{% load form_tags %}
+
+<div class="modal-overlay" id="add-location-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Add New Top-Level Location</h5>
+            <button type="button" class="modal-close btn-icon btn-icon-red" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form action="{% url 'location_configuration:locations_tab' %}" method="post" novalidate>
+                {% csrf_token %}
+                {% render_field form.name %}
+                {% render_field form.location_type %}
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-green">Save Location</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -5,11 +5,22 @@
     Location Configuration
 {% endblock %}
 
+{% block page_actions %}
+    <button type="button" class="btn btn-green" data-modal-target="#add-location-modal">
+        <span class="material-symbols-outlined">add</span>
+        <span>Add Top Level Location</span>
+    </button>
+{% endblock %}
+
 {% block content %}
     {# Use the new generic tag, passing in the context from the view #}
     {% tab_navigator tabs=tabs active_tab=active_tab %}
 
     <div class="tab-content">
-        <p>This is the content for the Locations tab.</p>
+        <div class="location-tree">
+            {% include "location_configuration/partials/_location_tree.html" with locations=top_level_locations %}
+        </div>
     </div>
+
+    {% include "location_configuration/partials/_add_location_modal.html" with form=add_location_form %}
 {% endblock %}

@@ -1,11 +1,3 @@
-/**
- * location_configuration.js
- *
- * Contains all JavaScript logic specific to the Location Configuration app.
- * This includes initializing icon pickers, populating the 'edit' form,
- * and handling conditional field logic.
- */
-
 // --- Global variables to hold the icon picker instances ---
 let addIconPickerInstance = null;
 let editIconPickerInstance = null;
@@ -13,10 +5,7 @@ let editIconPickerInstance = null;
 
 // --- Main Entry Point ---
 document.addEventListener("DOMContentLoaded", () => {
-    // This page has special icon pickers, so we initialize them first.
     initializeIconPickers();
-
-    // Set up the specific behaviors for the 'add' and 'edit' modals.
     initializeLocationConfigModals();
 });
 
@@ -69,9 +58,9 @@ function initializeLocationConfigModals() {
 
     // --- Behavior for the "Add" Modal ---
     // The main.js script now handles the click and opening of the modal.
-    // We just need to ensure that if the modal is opened, the form is cleared.
+    // If the modal is opened, the form is cleared.
     if (addModal) {
-        // We listen for the 'is-active' class change, which is more reliable.
+        // Listen for the 'is-active' class change.
         const observer = new MutationObserver(mutations => {
             mutations.forEach(mutation => {
                 if (mutation.attributeName === 'class' && addModal.classList.contains('is-active')) {
@@ -90,9 +79,8 @@ function initializeLocationConfigModals() {
     }
 
     // --- Behavior for the "Edit" Modal ---
-    // This is the key change. We are no longer adding a click listener to each button.
-    // The generic modal handler in main.js will open the modal. Our job is to populate it.
-    // We can piggyback on the same click event that main.js is listening for.
+    // The generic modal handler in main.js will open the modal.
+    // Piggyback on the same click event that main.js is listening for.
     document.addEventListener('click', function(event) {
         // Find the button that was clicked, if it was an edit button
         const editButton = event.target.closest('.edit-type-btn');
@@ -131,8 +119,7 @@ function populateEditForm(form, jsonData) {
     const data = JSON.parse(jsonData);
 
     // --- Handle Parent Checkboxes ---
-    // First, reset all checkboxes to be visible. This is crucial when opening
-    // the modal for different items consecutively.
+    // First, reset all checkboxes to be visible. This is crucial when opening the modal for different items consecutively.
     const allParentCheckboxes = form.querySelectorAll('.checkbox-list label');
     allParentCheckboxes.forEach(label => {
         label.style.display = ''; // Use an empty string to reset to default CSS display

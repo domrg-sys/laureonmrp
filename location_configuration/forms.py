@@ -1,5 +1,5 @@
 from django import forms
-from .models import LocationType
+from .models import LocationType, Location
 
 # --- WIDGETS ---
 
@@ -146,3 +146,19 @@ class LocationTypeForm(forms.ModelForm):
                         )
         
         return cleaned_data
+    
+class LocationForm(forms.ModelForm):
+    class Meta:
+        model = Location
+        fields = ['name', 'location_type', 'parent']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'parent' not in self.initial:
+            # This is a top-level location, so only allow types that can be top-level.
+            self.fields['location_type'].queryset = LocationType.objects.filter(allowed_parents__isnull=True)
+        else:
+            # This location has a parent, so only allow types that are allowed for that parent.
+            parent_id = self.initial['parent']
+            parent_location = Location.objects.get(pk=parent_id)
+            self.fields['location_type'].queryset = parent_location.location_type.allowed_children.all()

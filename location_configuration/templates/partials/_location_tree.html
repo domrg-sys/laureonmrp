@@ -1,0 +1,13 @@
+{% for location in locations %}
+    <div class="location-node">
+        <div class="location-node-content">
+            <span class="location-name">{{ location.name }}</span>
+            <span class="location-type">({{ location.location_type.name }})</span>
+        </div>
+        {% if location.children.all %}
+            <div class="location-node-children">
+                {% include "location_configuration/partials/_location_tree.html" with locations=location.children.all %}
+            </div>
+        {% endif %}
+    </div>
+{% endfor %}

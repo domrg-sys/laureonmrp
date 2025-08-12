@@ -4,6 +4,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils.safestring import mark_safe
 from django.shortcuts import get_object_or_404, redirect
 from django.forms.utils import ErrorDict
+from django.http import JsonResponse
 import json
 
 from core.views import GenericFormHandlingMixin
@@ -31,18 +32,41 @@ class LocationsTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Templa
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('locations'))
         context['add_location_form'] = LocationForm()
+        # Provide a form instance for the new "add child" modal
+        context['add_child_form'] = LocationForm()
         context['top_level_locations'] = Location.objects.filter(parent__isnull=True)
         return context
 
     def post(self, request, *args, **kwargs):
+        # We now pass the request.POST data to the form instance
         form = LocationForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect(self.get_success_url())
-        else:
-            # For simplicity, I'm not handling form errors in the modal for this iteration.
-            # In a real application, you'd use the GenericFormHandlingMixin to show errors.
-            return redirect(self.get_success_url())
+        # Redirect on both success and failure to show the updated tree or clear the modal
+        return redirect(self.get_success_url())
+    
+    def post(self, request, *args, **kwargs):
+        # Instantiate the form with the submitted POST data
+        form = LocationForm(request.POST)
+        if form.is_valid():
+            form.save()
+        # Redirect on both success and failure
+        return redirect(self.get_success_url())
+    
+def get_child_location_types(request, parent_id):
+    """
+    Returns a JSON list of valid location types that can be a child
+    of the specified parent location.
+    """
+    try:
+        parent_location = Location.objects.get(pk=parent_id)
+        # Find all location types that are allowed children of the parent's type
+        allowed_child_types = parent_location.location_type.allowed_children.all()
+        # Format the data for the JSON response
+        data = [{'id': loc_type.id, 'name': loc_type.name} for loc_type in allowed_child_types]
+        return JsonResponse(data, safe=False)
+    except Location.DoesNotExist:
+        return JsonResponse({'error': 'Parent location not found'}, status=404)
 
 class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, TemplateView):
     permission_required = 'location_configuration.view_locationconfiguration_tab'

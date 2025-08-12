@@ -628,3 +628,25 @@ input[type="checkbox"] {
     min-width: 48px;
     text-align: center;
 }
+
+/* --- Location Tree Styles --- */
+.location-tree {
+    text-align: left;
+}
+
+.location-node-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* Space between icon, name, and button */
+    padding: 0.25rem 0;
+}
+
+.location-node-icon {
+    color: var(--color-gray-3);
+}
+
+.location-node-children {
+    margin-left: 2rem; /* This creates the tree indentation */
+    border-left: 2px solid var(--color-gray-1);
+    padding-left: 1rem;
+}

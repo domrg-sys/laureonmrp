@@ -1,0 +1,29 @@
+{% for location in locations %}
+    <div class="location-node">
+        <div class="location-node-content">
+            {# Display the icon for the location's type #}
+            <span class="material-symbols-outlined location-node-icon">{{ location.location_type.icon }}</span>
+
+            {# Display the location's name #}
+            <span class="location-name">{{ location.name }}</span>
+
+            {# Add an "Add Child" button, which will trigger a new modal #}
+            <button type="button"
+                    class="btn-icon btn-icon-green add-child-btn"
+                    aria-label="Add Child Location"
+                    title="Add Child Location"
+                    data-modal-target="#add-child-location-modal"
+                    data-parent-id="{{ location.pk }}"
+                    data-parent-name="{{ location.name }}">
+              <span class="material-symbols-outlined">add</span>
+            </button>
+        </div>
+
+        {# This part remains the same to handle the recursion for children #}
+        {% if location.children.all %}
+            <div class="location-node-children">
+                {% include "location_configuration/partials/_location_tree.html" with locations=location.children.all %}
+            </div>
+        {% endif %}
+    </div>
+{% endfor %}

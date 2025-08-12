@@ -91,6 +91,50 @@ function initializeLocationConfigModals() {
         populateEditForm(form, editButton.dataset.actionInfo);
     });
 
+    // --- Behavior for the "Add Child" Modal ---
+    document.addEventListener('click', async function(event) {
+        const addChildButton = event.target.closest('.add-child-btn');
+        if (!addChildButton) return;
+
+        const parentId = addChildButton.dataset.parentId;
+        const parentName = addChildButton.dataset.parentName;
+        const modal = document.querySelector('#add-child-location-modal');
+        const selectElement = modal.querySelector('select[name="location_type"]');
+        const form = modal.querySelector('#add-child-location-form');
+
+        if (!modal || !selectElement || !form) return;
+
+        // Populate the modal title and hidden parent ID input
+        modal.querySelector('#parent-location-name').textContent = parentName;
+        modal.querySelector('#parent-location-id').value = parentId;
+
+        // Fetch the valid child types from the server
+        try {
+            const response = await fetch(`/location_configuration/get-child-types/${parentId}/`);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const childTypes = await response.json();
+
+            // Clear existing options from the select dropdown
+            selectElement.innerHTML = '';
+
+            // Add a default, placeholder option
+            const defaultOption = new Option('Select a location type', '');
+            selectElement.add(defaultOption);
+
+            // Populate the dropdown with the fetched types
+            childTypes.forEach(type => {
+                const option = new Option(type.name, type.id);
+                selectElement.add(option);
+            });
+
+        } catch (error) {
+            console.error('Failed to fetch child location types:', error);
+            // Optionally, display an error message to the user in the modal
+            selectElement.innerHTML = '<option>Could not load types</option>';
+        }
+    });
 
     // --- Run conditional logic on page load for BOTH modals ---
     // This ensures fields are correctly disabled if a form is re-rendered with errors.

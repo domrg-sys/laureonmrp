@@ -1,0 +1,26 @@
+{% load form_tags %}
+
+<div class="modal-overlay" id="add-child-location-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Add Child to <strong id="parent-location-name"></strong></h5>
+            <button type="button" class="modal-close btn-icon btn-icon-red" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="add-child-location-form" action="{% url 'location_configuration:locations_tab' %}" method="post" novalidate>
+                {% csrf_token %}
+                {# This hidden input will be populated by JavaScript #}
+                <input type="hidden" name="parent" id="parent-location-id">
+
+                {% render_field form.name %}
+                {% render_field form.location_type %}
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-green">Save Child Location</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

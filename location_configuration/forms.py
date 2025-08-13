@@ -154,6 +154,7 @@ class LocationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['parent'].required = False
         parent_id = None
 
         # On POST, the parent is in self.data, not self.initial

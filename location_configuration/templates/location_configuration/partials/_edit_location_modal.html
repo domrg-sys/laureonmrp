@@ -1,0 +1,28 @@
+{% load form_tags %}
+
+<div class="modal-overlay" id="edit-location-modal" {% if edit_location_form_has_errors %}data-is-open-on-load{% endif %}>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Edit Location</h5>
+            <button type="button" class="modal-close btn-icon btn-icon-red" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form action="{% url 'location_configuration:locations_tab' %}" method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="form_name" value="edit_location_form">
+                <input type="hidden" name="location_id" value="{{ form.instance.pk|default:'' }}">
+                
+                {% include "partials/_form_error_summary.html" with form=form %}
+
+                {% render_field form.name %}
+                {% render_field form.location_type %}
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-blue">Update Location</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

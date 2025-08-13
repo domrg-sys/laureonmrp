@@ -31,20 +31,52 @@ class LocationsTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Templa
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('locations'))
-        context['add_location_form'] = LocationForm()
-        # Provide a form instance for the new "add child" modal
-        context['add_child_form'] = LocationForm()
+
+        forms_to_process = {
+            'add_location_form': LocationForm(),
+            'add_child_form': LocationForm(),
+            'edit_location_form': LocationForm(),
+        }
+
+        for form_name, form_instance in forms_to_process.items():
+            form_errors_key = f'form_errors_{form_name}'
+            form_data_key = f'form_data_{form_name}'
+
+            form_errors_json = self.request.session.get(form_errors_key)
+            session_data = self.request.session.get(form_data_key)
+
+            if form_errors_json and session_data:
+                self.request.session.pop(form_errors_key, None)
+                self.request.session.pop(form_data_key, None)
+
+                instance_id = session_data.get('location_id') if form_name == 'edit_location_form' else None
+                instance = get_object_or_404(Location, pk=instance_id) if instance_id else None
+
+                rebound_form = type(form_instance)(data=session_data, instance=instance)
+                rebound_form._errors = ErrorDict(json.loads(form_errors_json))
+
+                context[form_name] = rebound_form
+                context[f'{form_name}_has_errors'] = True
+            else:
+                context[form_name] = form_instance
+
         context['top_level_locations'] = Location.objects.filter(parent__isnull=True)
         return context
 
     def post(self, request, *args, **kwargs):
-        # We now pass the request.POST data to the form instance
-        form = LocationForm(request.POST)
+        instance = None
+        if 'location_id' in request.POST and request.POST['location_id']:
+            instance = get_object_or_404(Location, pk=request.POST['location_id'])
+        
+        form = LocationForm(request.POST, instance=instance)
+
         if form.is_valid():
             form.save()
-        # Redirect on both success and failure to show the updated tree or clear the modal
-        return redirect(self.get_success_url())
-    
+            return redirect(self.get_success_url())
+        else:
+            form_name = request.POST.get('form_name', 'add_location_form')
+            return self.form_invalid(form, form_name)
+
 def get_child_location_types(request, parent_id):
     """
     Returns a JSON list of valid location types that can be a child
@@ -52,13 +84,34 @@ def get_child_location_types(request, parent_id):
     """
     try:
         parent_location = Location.objects.get(pk=parent_id)
-        # Find all location types that are allowed children of the parent's type
         allowed_child_types = parent_location.location_type.allowed_children.all()
-        # Format the data for the JSON response
         data = [{'id': loc_type.id, 'name': loc_type.name} for loc_type in allowed_child_types]
         return JsonResponse(data, safe=False)
     except Location.DoesNotExist:
         return JsonResponse({'error': 'Parent location not found'}, status=404)
+
+def get_location_details(request, location_id):
+    """
+    Returns JSON details for a specific location, used to populate the edit form.
+    """
+    try:
+        location = Location.objects.get(pk=location_id)
+        
+        if location.parent:
+            valid_location_types = location.parent.location_type.allowed_children.all()
+        else:
+            # This is a top-level location
+            valid_location_types = LocationType.objects.filter(allowed_parents__isnull=True)
+            
+        data = {
+            'name': location.name,
+            'current_location_type_id': location.location_type.id,
+            'valid_location_types': [{'id': lt.id, 'name': lt.name} for lt in valid_location_types]
+        }
+        return JsonResponse(data)
+    except Location.DoesNotExist:
+        return JsonResponse({'error': 'Location not found'}, status=404)
+
 
 class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, TemplateView):
     permission_required = 'location_configuration.view_locationconfiguration_tab'

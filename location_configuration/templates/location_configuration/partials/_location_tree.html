@@ -17,6 +17,16 @@
                     data-parent-name="{{ location.name }}">
               <span class="material-symbols-outlined">add</span>
             </button>
+
+            {# Add an "Edit" button for the location #}
+            <button type="button"
+                    class="btn-icon btn-icon-blue edit-location-btn"
+                    aria-label="Edit Location"
+                    title="Edit Location"
+                    data-modal-target="#edit-location-modal"
+                    data-location-id="{{ location.pk }}">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
         </div>
 
         {# This part remains the same to handle the recursion for children #}

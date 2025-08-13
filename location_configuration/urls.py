@@ -10,6 +10,7 @@ urlpatterns = [
     # URLs for the "Locations" tab.
     path('locations/', views.LocationsTabView.as_view(), name='locations_tab'),
     path('get-child-types/<int:parent_id>/', views.get_child_location_types, name='get_child_location_types'),
+    path('get-location-details/<int:location_id>/', views.get_location_details, name='get_location_details'),
 
     # URLs for the "Location Types" tab.
     path('types/', views.LocationTypesTabView.as_view(), name='types_tab'),

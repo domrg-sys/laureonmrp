@@ -6,7 +6,8 @@ let editIconPickerInstance = null;
 // --- Main Entry Point ---
 document.addEventListener("DOMContentLoaded", () => {
     initializeIconPickers();
-    initializeLocationConfigModals();
+    setupEventListeners();
+    initializeModalsOnLoad();
 });
 
 
@@ -50,107 +51,161 @@ function initializeIconPickers() {
 }
 
 /**
- * Sets up all page-specific modal behaviors, including form clearing and populating.
+ * Sets up a single, delegated event listener to handle all clicks.
  */
-function initializeLocationConfigModals() {
-    const addModal = document.querySelector('#add-type-modal');
-    const editModal = document.querySelector('#edit-type-modal');
+function setupEventListeners() {
+    document.body.addEventListener('click', function(event) {
+        const target = event.target;
+        const addTypeButton = target.closest('button[data-modal-target="#add-type-modal"]');
+        const editTypeButton = target.closest('.edit-type-btn');
+        const addChildButton = target.closest('.add-child-btn');
+        const addLocationButton = target.closest('button[data-modal-target="#add-location-modal"]');
+        const editLocationButton = target.closest('.edit-location-btn');
 
-    // --- Behavior for the "Add" Modal ---
-    // The main.js script now handles the click and opening of the modal.
-    // If the modal is opened, the form is cleared.
-    if (addModal) {
-        // Listen for the 'is-active' class change.
-        const observer = new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                if (mutation.attributeName === 'class' && addModal.classList.contains('is-active')) {
-                    const form = addModal.querySelector('form');
-                    if (form && window.uiUtils) {
-                        window.uiUtils.clearForm(form);
-                    }
-                    if (addIconPickerInstance) {
-                        addIconPickerInstance.setChoiceByValue('warehouse'); 
-                    }
-                    handleConditionalGridFields(addModal);
-                }
-            });
-        });
-        observer.observe(addModal, { attributes: true });
-    }
-
-    // --- Behavior for the "Edit" Modal ---
-    // The generic modal handler in main.js will open the modal.
-    // Piggyback on the same click event that main.js is listening for.
-    document.addEventListener('click', function(event) {
-        // Find the button that was clicked, if it was an edit button
-        const editButton = event.target.closest('.edit-type-btn');
-        if (!editButton) return;
-
-        // If an edit button was clicked, populate the form.
-        const form = editModal.querySelector('form');
-        populateEditForm(form, editButton.dataset.actionInfo);
-    });
-
-    // --- Behavior for the "Add Child" Modal ---
-    document.addEventListener('click', async function(event) {
-        const addChildButton = event.target.closest('.add-child-btn');
-        if (!addChildButton) return;
-
-        const parentId = addChildButton.dataset.parentId;
-        const parentName = addChildButton.dataset.parentName;
-        const modal = document.querySelector('#add-child-location-modal');
-        const selectElement = modal.querySelector('select[name="location_type"]');
-        const form = modal.querySelector('#add-child-location-form');
-
-        if (!modal || !selectElement || !form) return;
-
-        // Populate the modal title and hidden parent ID input
-        modal.querySelector('#parent-location-name').textContent = parentName;
-        modal.querySelector('#parent-location-id').value = parentId;
-        modal.querySelector('#parent-location-name-display').value = parentName;
-
-        // Fetch the valid child types from the server
-        try {
-            const response = await fetch(`/location_configuration/get-child-types/${parentId}/`);
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            const childTypes = await response.json();
-
-            // Clear existing options from the select dropdown
-            selectElement.innerHTML = '';
-
-            // Add a default, placeholder option
-            const defaultOption = new Option('Select a location type', '');
-            selectElement.add(defaultOption);
-
-            // Populate the dropdown with the fetched types
-            childTypes.forEach(type => {
-                const option = new Option(type.name, type.id);
-                selectElement.add(option);
-            });
-
-        } catch (error) {
-            console.error('Failed to fetch child location types:', error);
-            // Optionally, display an error message to the user in the modal
-            selectElement.innerHTML = '<option>Could not load types</option>';
+        if (addTypeButton) {
+            handleAddType(addTypeButton);
+        } else if (editTypeButton) {
+            handleEditType(editTypeButton);
+        } else if (addChildButton) {
+            handleAddChild(addChildButton);
+        } else if (addLocationButton) {
+            handleAddLocation(addLocationButton);
+        } else if (editLocationButton) {
+            handleEditLocation(editLocationButton);
         }
     });
 
-    // --- Run conditional logic on page load for BOTH modals ---
-    // This ensures fields are correctly disabled if a form is re-rendered with errors.
+    // Add listeners for dynamic fields within modals
+    const addModal = document.querySelector('#add-type-modal');
     if (addModal) {
-      handleConditionalGridFields(addModal);
+        handleConditionalGridFields(addModal);
     }
+
+    const editModal = document.querySelector('#edit-type-modal');
     if (editModal) {
-      handleConditionalGridFields(editModal);
+        handleConditionalGridFields(editModal);
     }
 }
+
+
+/**
+ * If any modals are rendered with server-side errors, they will have the
+ * `data-is-open-on-load` attribute. This function ensures they are visible
+ * when the page loads.
+ */
+function initializeModalsOnLoad() {
+    document.querySelectorAll('.modal-overlay[data-is-open-on-load]').forEach(modal => {
+        if (modal.id === 'add-type-modal' || modal.id === 'edit-type-modal') {
+             handleConditionalGridFields(modal);
+        }
+    });
+}
+
+
+// --- Event Handler Functions ---
+
+function handleAddType(button) {
+    const modal = document.querySelector(button.dataset.modalTarget);
+    if (!modal) return;
+
+    const form = modal.querySelector('form');
+    if (form && window.uiUtils) {
+        window.uiUtils.clearForm(form);
+    }
+    if (addIconPickerInstance) {
+        addIconPickerInstance.setChoiceByValue('warehouse');
+    }
+    handleConditionalGridFields(modal);
+}
+
+function handleEditType(button) {
+    const modal = document.querySelector(button.dataset.modalTarget);
+    if (!modal) return;
+
+    const form = modal.querySelector('form');
+    populateEditForm(form, button.dataset.actionInfo);
+}
+
+async function handleAddChild(button) {
+    const parentId = button.dataset.parentId;
+    const parentName = button.dataset.parentName;
+    const modal = document.querySelector(button.dataset.modalTarget);
+    
+    if (!modal) return;
+
+    const selectElement = modal.querySelector('select[name="location_type"]');
+    const form = modal.querySelector('#add-child-location-form');
+
+    if (!selectElement || !form) return;
+
+    modal.querySelector('#parent-location-name-title').textContent = parentName;
+    modal.querySelector('#parent-location-id').value = parentId;
+    modal.querySelector('#parent-location-name-display').value = parentName;
+
+    try {
+        const response = await fetch(`/location_configuration/get-child-types/${parentId}/`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const childTypes = await response.json();
+        
+        selectElement.innerHTML = '';
+        const defaultOption = new Option('Select a location type', '');
+        selectElement.add(defaultOption);
+
+        childTypes.forEach(type => {
+            const option = new Option(type.name, type.id);
+            selectElement.add(option);
+        });
+    } catch (error) {
+        console.error('Failed to fetch child location types:', error);
+        selectElement.innerHTML = '<option>Could not load types</option>';
+    }
+}
+
+function handleAddLocation(button) {
+    const modal = document.querySelector(button.dataset.modalTarget);
+    if (!modal) return;
+
+    const form = modal.querySelector('form');
+    if (form && window.uiUtils) {
+        window.uiUtils.clearForm(form);
+    }
+}
+
+async function handleEditLocation(button) {
+    const locationId = button.dataset.locationId;
+    const modal = document.querySelector(button.dataset.modalTarget);
+    if (!modal || !locationId) return;
+
+    const form = modal.querySelector('form');
+
+    try {
+        const response = await fetch(`/location_configuration/get-location-details/${locationId}/`);
+        if (!response.ok) throw new Error('Failed to fetch location details.');
+        const data = await response.json();
+        
+        // Populate the form fields
+        form.querySelector('input[name="name"]').value = data.name;
+        form.querySelector('input[name="location_id"]').value = locationId;
+
+        // Populate and select the location_type dropdown
+        const selectElement = form.querySelector('select[name="location_type"]');
+        selectElement.innerHTML = ''; // Clear existing options
+        data.valid_location_types.forEach(type => {
+            const option = new Option(type.name, type.id);
+            selectElement.add(option);
+        });
+        selectElement.value = data.current_location_type_id;
+
+    } catch (error) {
+        console.error("Error populating edit location form:", error);
+    }
+}
+
 
 // --- Logic Functions ---
 
 /**
- * Populates the edit form with data from the clicked table row.
+ * Populates the 'Edit Location Type' form with data from the clicked table row.
  * @param {HTMLFormElement} form The form element inside the edit modal.
  * @param {string} jsonData The JSON string of data from the button's data-attribute.
  */
@@ -163,14 +218,12 @@ function populateEditForm(form, jsonData) {
     
     const data = JSON.parse(jsonData);
 
-    // --- Handle Parent Checkboxes ---
-    // First, reset all checkboxes to be visible. This is crucial when opening the modal for different items consecutively.
+    // Handle Parent Checkboxes
     const allParentCheckboxes = form.querySelectorAll('.checkbox-list label');
     allParentCheckboxes.forEach(label => {
-        label.style.display = ''; // Use an empty string to reset to default CSS display
+        label.style.display = '';
     });
 
-    // Now, hide the labels for invalid parent IDs.
     if (data.invalid_parent_ids) {
         data.invalid_parent_ids.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
@@ -183,18 +236,16 @@ function populateEditForm(form, jsonData) {
         });
     }
 
-    // --- Populate Standard Fields ---
+    // Populate Standard Fields
     form.querySelector('input[name="location_type_id"]').value = data.location_type_id;
     form.querySelector('input[name="name"]').value = data.name;
     form.querySelector('input[name="rows"]').value = data.rows || '';
     form.querySelector('input[name="columns"]').value = data.columns || '';
 
-    // Set the icon picker's value
     if (editIconPickerInstance) {
         editIconPickerInstance.setChoiceByValue(data.icon || 'warehouse');
     }
     
-    // Check the correct parent checkboxes from the allowed list
     if (data.allowed_parents) {
         data.allowed_parents.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
@@ -202,18 +253,15 @@ function populateEditForm(form, jsonData) {
         });
     }
 
-    // Set boolean checkboxes
     form.querySelector('input[name="can_store_inventory"]').checked = data.can_store_inventory;
     form.querySelector('input[name="can_store_samples"]').checked = data.can_store_samples;
     form.querySelector('input[name="has_spaces"]').checked = data.has_spaces;
 
-    // Conditionally disable fields if the type is already in use
     if (data['is-in-use']) {
         form.querySelector('input[name="name"]').disabled = true;
         form.querySelector('input[name="has_spaces"]').disabled = true;
     }
 
-    // Now that the modal is populated, run the conditional logic for its grid fields.
     handleConditionalGridFields(form.closest('.modal-overlay'));
 }
 
@@ -239,9 +287,8 @@ function handleConditionalGridFields(container) {
             colsInput.value = '';
         }
     };
-
-    // Run once on setup and then add a listener for changes.
-    toggleGridInputs();
-    hasSpacesCheckbox.removeEventListener('change', toggleGridInputs); // Prevent duplicate listeners
+    
+    hasSpacesCheckbox.removeEventListener('change', toggleGridInputs);
     hasSpacesCheckbox.addEventListener('change', toggleGridInputs);
+    toggleGridInputs();
 }

@@ -27,12 +27,28 @@
                     data-location-id="{{ location.pk }}">
               <span class="material-symbols-outlined">edit</span>
             </button>
+
+            {# Add a "Delete" button for the location #}
+            {% if can_delete_location and not location.children.all %}
+            <button type="button"
+                    class="btn-icon btn-icon-red"
+                    aria-label="Delete Location"
+                    title="Delete Location"
+                    data-modal-target="#delete-confirmation-modal"
+                    data-action-info='{"app_label": "location_configuration", "model_name": "Location", "pk": {{ location.pk }}, "item_name": "{{ location.name }}", "success_url": "{% url "location_configuration:locations_tab" %}"}'>
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+            {% else %}
+            <span class="btn-icon btn-icon-disable" title="Permission Denied or Location has children">
+                <span class="material-symbols-outlined">delete</span>
+            </span>
+            {% endif %}
         </div>
 
         {# This part remains the same to handle the recursion for children #}
         {% if location.children.all %}
             <div class="location-node-children">
-                {% include "location_configuration/partials/_location_tree.html" with locations=location.children.all %}
+                {% include "location_configuration/partials/_location_tree.html" with locations=location.children.all can_delete_location=can_delete_location %}
             </div>
         {% endif %}
     </div>

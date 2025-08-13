@@ -61,6 +61,7 @@ class LocationsTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Templa
                 context[form_name] = form_instance
 
         context['top_level_locations'] = Location.objects.filter(parent__isnull=True)
+        context['can_delete_location'] = self.request.user.has_perm('location_configuration.delete_location')
         return context
 
     def post(self, request, *args, **kwargs):

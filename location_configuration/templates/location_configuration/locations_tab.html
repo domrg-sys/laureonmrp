@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load component_tags %}
+{% load static %}
 
 {% block page_title %}
     Location Configuration
@@ -22,11 +23,15 @@
 
     <div class="tab-content">
         <div class="location-tree">
-            {% include "location_configuration/partials/_location_tree.html" with locations=top_level_locations %}
+            {% include "location_configuration/partials/_location_tree.html" with locations=top_level_locations can_delete_location=can_delete_location %}
         </div>
     </div>
 
     {% include "location_configuration/partials/_add_location_modal.html" with form=add_location_form %}
     {% include "location_configuration/partials/_add_child_location_modal.html" with form=add_child_form %}
     {% include "location_configuration/partials/_edit_location_modal.html" with form=edit_location_form %}
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'location_configuration/js/location_configuration.js' %}" defer></script>
 {% endblock %}

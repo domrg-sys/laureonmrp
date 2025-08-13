@@ -182,7 +182,7 @@ async function handleEditLocation(button) {
         const response = await fetch(`/location_configuration/get-location-details/${locationId}/`);
         if (!response.ok) throw new Error('Failed to fetch location details.');
         const data = await response.json();
-        
+
         // Populate the form fields
         form.querySelector('input[name="name"]').value = data.name;
         form.querySelector('input[name="location_id"]').value = locationId;
@@ -196,11 +196,15 @@ async function handleEditLocation(button) {
         });
         selectElement.value = data.current_location_type_id;
 
+        // --- THIS IS THE NEW LOGIC ---
+        // Disable the dropdown if the location has children.
+        selectElement.disabled = data.has_children;
+
+
     } catch (error) {
         console.error("Error populating edit location form:", error);
     }
 }
-
 
 // --- Logic Functions ---
 
@@ -237,7 +241,7 @@ function populateEditForm(form, jsonData) {
         });
     }
 
-    // Check the boxes for all allowed parents
+    // Check the boxes for all *currently allowed* parents from the database.
     if (data.allowed_parents) {
         data.allowed_parents.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
@@ -247,14 +251,13 @@ function populateEditForm(form, jsonData) {
         });
     }
 
-    // Disable checkboxes for parent types that are actively in use
+    // Separately, disable the checkboxes for parent types that are actively in use.
+    // An in-use parent's checkbox should already be checked from the step above.
     if (data.in_use_parent_type_ids) {
         data.in_use_parent_type_ids.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
             if (checkbox) {
                 checkbox.disabled = true;
-                // Ensure it's also checked, as it's an existing relationship
-                checkbox.checked = true;
             }
         });
     }
@@ -280,13 +283,12 @@ function populateEditForm(form, jsonData) {
     } else {
         // Explicitly re-enable fields if the type is not in use
         form.querySelector('input[name="has_spaces"]').disabled = false;
-        // NOTE: We don't re-enable rows/columns here. 
+        // NOTE: We don't re-enable rows/columns here.
         // The handleConditionalGridFields function will do that correctly.
     }
 
     handleConditionalGridFields(form.closest('.modal-overlay'));
 }
-
 
 /**
  * Handles the conditional logic for enabling/disabling the grid input fields.

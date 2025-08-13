@@ -97,17 +97,18 @@ def get_location_details(request, location_id):
     """
     try:
         location = Location.objects.get(pk=location_id)
-        
+
         if location.parent:
             valid_location_types = location.parent.location_type.allowed_children.all()
         else:
             # This is a top-level location
             valid_location_types = LocationType.objects.filter(allowed_parents__isnull=True)
-            
+
         data = {
             'name': location.name,
             'current_location_type_id': location.location_type.id,
-            'valid_location_types': [{'id': lt.id, 'name': lt.name} for lt in valid_location_types]
+            'valid_location_types': [{'id': lt.id, 'name': lt.name} for lt in valid_location_types],
+            'has_children': location.children.exists() # --- ADD THIS LINE ---
         }
         return JsonResponse(data)
     except Location.DoesNotExist:

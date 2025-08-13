@@ -150,10 +150,11 @@ class LocationTypeForm(forms.ModelForm):
 
     def clean_allowed_parents(self):
         """
-        Ensures that an in-use parent is not removed, even if the request is tampered with.
+        Ensures that an in-use parent is not removed, even if the request is tampered with
+        or a disabled checkbox is not submitted.
         """
         if self.instance and self.instance.pk:
-            # Get the set of parent types that are in use and cannot be removed.
+            # Get the set of parent type IDs that are in use and cannot be removed.
             in_use_parent_ids = set(
                 Location.objects.filter(
                     location_type=self.instance,
@@ -163,20 +164,26 @@ class LocationTypeForm(forms.ModelForm):
                 .distinct()
             )
 
-            # Get the set of parent IDs the user submitted with the form.
-            selected_parent_ids = {p.id for p in self.cleaned_data.get('allowed_parents', [])}
+            # This is the QuerySet of parents the user actually submitted.
+            # It will be empty for parents whose checkboxes were disabled.
+            submitted_parents = self.cleaned_data.get('allowed_parents', LocationType.objects.none())
 
-            # Check if any required parents are missing from the user's submission.
-            missing_parents = in_use_parent_ids - selected_parent_ids
-            if missing_parents:
-                # If a required parent was unchecked, raise a validation error.
-                missing_parent_names = ", ".join(
-                    LocationType.objects.filter(pk__in=missing_parents).values_list('name', flat=True)
-                )
-                raise forms.ValidationError(
-                    f"You cannot remove the following parent(s) because they are in use: {missing_parent_names}"
-                )
+            # Get the IDs from the submitted QuerySet.
+            submitted_parent_ids = {p.id for p in submitted_parents}
 
+            # Find which required (in-use) parents are missing from the submission.
+            missing_in_use_ids = in_use_parent_ids - submitted_parent_ids
+
+            # If there are missing parents, fetch them and add them to the submitted QuerySet.
+            if missing_in_use_ids:
+                missing_parents_to_add = LocationType.objects.filter(pk__in=missing_in_use_ids)
+                # Combine the submitted parents with the ones that must be re-added.
+                return submitted_parents | missing_parents_to_add
+
+            # If no in-use parents were missing, return the original submission.
+            return submitted_parents
+
+        # If this is a new instance, just return the data as-is.
         return self.cleaned_data.get('allowed_parents')
 
     def clean(self):
@@ -236,3 +243,18 @@ class LocationForm(forms.ModelForm):
         else:
             # No parent, so these are top-level locations
             self.fields['location_type'].queryset = LocationType.objects.filter(allowed_parents__isnull=True)
+
+        if self.instance and self.instance.pk and self.instance.children.exists():
+            self.fields['location_type'].disabled = True
+            self.fields['location_type'].help_text = "This location has children, so its type cannot be changed."
+
+
+    def clean_location_type(self):
+        """
+        Ensures the location_type is not changed if the field is disabled.
+        """
+        # If the field is disabled, its value will not be in the cleaned_data.
+        # We must return the original value from the instance.
+        if self.fields['location_type'].disabled:
+            return self.instance.location_type
+        return self.cleaned_data.get('location_type')

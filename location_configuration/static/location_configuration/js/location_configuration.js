@@ -274,13 +274,11 @@ function populateEditForm(form, jsonData) {
     form.querySelector('input[name="has_spaces"]').checked = data.has_spaces;
 
     if (data['is-in-use']) {
-        form.querySelector('input[name="name"]').disabled = true;
         form.querySelector('input[name="has_spaces"]').disabled = true;
         form.querySelector('input[name="rows"]').disabled = true;
         form.querySelector('input[name="columns"]').disabled = true;
     } else {
         // Explicitly re-enable fields if the type is not in use
-        form.querySelector('input[name="name"]').disabled = false;
         form.querySelector('input[name="has_spaces"]').disabled = false;
         // NOTE: We don't re-enable rows/columns here. 
         // The handleConditionalGridFields function will do that correctly.
@@ -304,8 +302,12 @@ function handleConditionalGridFields(container) {
 
     const toggleGridInputs = () => {
         const isChecked = hasSpacesCheckbox.checked;
-        rowsInput.disabled = !isChecked;
-        colsInput.disabled = !isChecked;
+        const isParentDisabled = hasSpacesCheckbox.disabled;
+
+        // A field should be disabled if the box is unchecked OR if the box itself is disabled.
+        rowsInput.disabled = !isChecked || isParentDisabled;
+        colsInput.disabled = !isChecked || isParentDisabled;
+
         if (!isChecked) {
             rowsInput.value = '';
             colsInput.value = '';

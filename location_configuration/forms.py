@@ -112,7 +112,6 @@ class LocationTypeForm(forms.ModelForm):
 
             # 2. Disable other fields if the type is already in use by a location.
             if self.instance.location_set.exists():
-                self.fields['name'].disabled = True
                 self.fields['has_spaces'].disabled = True
                 self.fields['rows'].disabled = True
                 self.fields['columns'].disabled = True

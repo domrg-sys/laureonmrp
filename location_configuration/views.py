@@ -238,6 +238,14 @@ class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Te
             descendants = type_obj.get_all_descendants()
             invalid_parent_ids = {type_obj.pk} | {desc.pk for desc in descendants}
 
+            # Explicitly find the IDs of parent types that are actually in use by locations of this type.
+            # This directly queries the Location model.
+            in_use_parent_type_ids = list(
+                Location.objects.filter(location_type=type_obj, parent__isnull=False)
+                .values_list('parent__location_type_id', flat=True)
+                .distinct()
+            )
+
             actions = []
             if can_change:
                 actions.append({
@@ -252,7 +260,8 @@ class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Te
                         'can_store_inventory': type_obj.can_store_inventory, 'can_store_samples': type_obj.can_store_samples,
                         'has_spaces': type_obj.has_spaces, 'rows': type_obj.rows, 'columns': type_obj.columns,
                         'is-in-use': is_in_use,
-                        'invalid_parent_ids': list(invalid_parent_ids)
+                        'invalid_parent_ids': list(invalid_parent_ids),
+                        'in_use_parent_type_ids': in_use_parent_type_ids
                     })
                 })
             else:

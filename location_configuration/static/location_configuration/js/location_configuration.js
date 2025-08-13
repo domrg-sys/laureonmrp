@@ -214,20 +214,47 @@ function populateEditForm(form, jsonData) {
 
     const data = JSON.parse(jsonData);
 
-    // Handle Parent Checkboxes
-    const allParentCheckboxes = form.querySelectorAll('.checkbox-list label');
-    allParentCheckboxes.forEach(label => {
-        label.style.display = '';
+    // First, reset all parent checkboxes to a default state (enabled and unchecked)
+    form.querySelectorAll('input[name="allowed_parents"]').forEach(checkbox => {
+        checkbox.disabled = false;
+        checkbox.checked = false;
+        const label = checkbox.closest('label');
+        if (label) {
+            label.style.display = ''; // Make sure label is visible
+        }
     });
- 
+
+    // Hide checkboxes that would cause a circular dependency
     if (data.invalid_parent_ids) {
         data.invalid_parent_ids.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
             if (checkbox) {
                 const label = checkbox.closest('label');
                 if (label) {
-                    label.style.display = 'none';
+                    label.style.display = 'none'; // We hide these entirely
                 }
+            }
+        });
+    }
+
+    // Check the boxes for all allowed parents
+    if (data.allowed_parents) {
+        data.allowed_parents.forEach(parentId => {
+            const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        });
+    }
+
+    // Disable checkboxes for parent types that are actively in use
+    if (data.in_use_parent_type_ids) {
+        data.in_use_parent_type_ids.forEach(parentId => {
+            const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
+            if (checkbox) {
+                checkbox.disabled = true;
+                // Ensure it's also checked, as it's an existing relationship
+                checkbox.checked = true;
             }
         });
     }
@@ -241,20 +268,6 @@ function populateEditForm(form, jsonData) {
     if (editIconPickerInstance) {
         editIconPickerInstance.setChoiceByValue(data.icon || 'warehouse');
     }
-    
-    // Clear all parent checkboxes before re-checking the correct ones
-    form.querySelectorAll('input[name="allowed_parents"]').forEach(checkbox => {
-        if (!checkbox.disabled) { // Only clear checkboxes that are not disabled
-            checkbox.checked = false;
-        }
-    });
-
-    if (data.allowed_parents) {
-        data.allowed_parents.forEach(parentId => {
-            const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
-            if (checkbox) checkbox.checked = true;
-        });
-    }
 
     form.querySelector('input[name="can_store_inventory"]').checked = data.can_store_inventory;
     form.querySelector('input[name="can_store_samples"]').checked = data.can_store_samples;
@@ -263,10 +276,14 @@ function populateEditForm(form, jsonData) {
     if (data['is-in-use']) {
         form.querySelector('input[name="name"]').disabled = true;
         form.querySelector('input[name="has_spaces"]').disabled = true;
-        } else {
+        form.querySelector('input[name="rows"]').disabled = true;
+        form.querySelector('input[name="columns"]').disabled = true;
+    } else {
         // Explicitly re-enable fields if the type is not in use
         form.querySelector('input[name="name"]').disabled = false;
         form.querySelector('input[name="has_spaces"]').disabled = false;
+        // NOTE: We don't re-enable rows/columns here. 
+        // The handleConditionalGridFields function will do that correctly.
     }
 
     handleConditionalGridFields(form.closest('.modal-overlay'));

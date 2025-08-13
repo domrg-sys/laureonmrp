@@ -114,6 +114,8 @@ class LocationTypeForm(forms.ModelForm):
             if self.instance.location_set.exists():
                 self.fields['name'].disabled = True
                 self.fields['has_spaces'].disabled = True
+                self.fields['rows'].disabled = True
+                self.fields['columns'].disabled = True
 
     def clean_name(self):
         """
@@ -130,6 +132,22 @@ class LocationTypeForm(forms.ModelForm):
         if self.fields.get('has_spaces') and self.fields['has_spaces'].disabled:
             return self.instance.has_spaces
         return self.cleaned_data.get('has_spaces')
+    
+    def clean_rows(self):
+        """
+        Ensures the rows value is not changed if the field is disabled.
+        """
+        if self.fields.get('rows') and self.fields['rows'].disabled:
+            return self.instance.rows
+        return self.cleaned_data.get('rows')
+
+    def clean_columns(self):
+        """
+        Ensures the columns value is not changed if the field is disabled.
+        """
+        if self.fields.get('columns') and self.fields['columns'].disabled:
+            return self.instance.columns
+        return self.cleaned_data.get('columns')
 
     def clean_allowed_parents(self):
         """

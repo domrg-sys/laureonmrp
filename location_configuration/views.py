@@ -45,14 +45,6 @@ class LocationsTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Templa
         # Redirect on both success and failure to show the updated tree or clear the modal
         return redirect(self.get_success_url())
     
-    def post(self, request, *args, **kwargs):
-        # Instantiate the form with the submitted POST data
-        form = LocationForm(request.POST)
-        if form.is_valid():
-            form.save()
-        # Redirect on both success and failure
-        return redirect(self.get_success_url())
-    
 def get_child_location_types(request, parent_id):
     """
     Returns a JSON list of valid location types that can be a child

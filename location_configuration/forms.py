@@ -154,11 +154,23 @@ class LocationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if 'parent' not in self.initial:
-            # This is a top-level location, so only allow types that can be top-level.
-            self.fields['location_type'].queryset = LocationType.objects.filter(allowed_parents__isnull=True)
+        parent_id = None
+
+        # On POST, the parent is in self.data, not self.initial
+        if 'parent' in self.data:
+            try:
+                parent_id = int(self.data.get('parent'))
+            except (ValueError, TypeError):
+                parent_id = None
+        elif 'parent' in self.initial:
+            parent_id = self.initial.get('parent')
+
+        if parent_id:
+            try:
+                parent_location = Location.objects.get(pk=parent_id)
+                self.fields['location_type'].queryset = parent_location.location_type.allowed_children.all()
+            except Location.DoesNotExist:
+                self.fields['location_type'].queryset = LocationType.objects.none()
         else:
-            # This location has a parent, so only allow types that are allowed for that parent.
-            parent_id = self.initial['parent']
-            parent_location = Location.objects.get(pk=parent_id)
-            self.fields['location_type'].queryset = parent_location.location_type.allowed_children.all()
+            # No parent, so these are top-level locations
+            self.fields['location_type'].queryset = LocationType.objects.filter(allowed_parents__isnull=True)

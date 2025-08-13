@@ -107,6 +107,7 @@ function initializeLocationConfigModals() {
         // Populate the modal title and hidden parent ID input
         modal.querySelector('#parent-location-name').textContent = parentName;
         modal.querySelector('#parent-location-id').value = parentId;
+        modal.querySelector('#parent-location-name-display').value = parentName;
 
         // Fetch the valid child types from the server
         try {

@@ -212,10 +212,6 @@ async function handleEditLocation(button) {
 function populateEditForm(form, jsonData) {
     if (!form || !jsonData) return;
 
-    if (window.uiUtils) {
-        window.uiUtils.clearForm(form);
-    }
-    
     const data = JSON.parse(jsonData);
 
     // Handle Parent Checkboxes
@@ -223,7 +219,7 @@ function populateEditForm(form, jsonData) {
     allParentCheckboxes.forEach(label => {
         label.style.display = '';
     });
-
+ 
     if (data.invalid_parent_ids) {
         data.invalid_parent_ids.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
@@ -246,6 +242,13 @@ function populateEditForm(form, jsonData) {
         editIconPickerInstance.setChoiceByValue(data.icon || 'warehouse');
     }
     
+    // Clear all parent checkboxes before re-checking the correct ones
+    form.querySelectorAll('input[name="allowed_parents"]').forEach(checkbox => {
+        if (!checkbox.disabled) { // Only clear checkboxes that are not disabled
+            checkbox.checked = false;
+        }
+    });
+
     if (data.allowed_parents) {
         data.allowed_parents.forEach(parentId => {
             const checkbox = form.querySelector(`input[name="allowed_parents"][value="${parentId}"]`);
@@ -260,6 +263,10 @@ function populateEditForm(form, jsonData) {
     if (data['is-in-use']) {
         form.querySelector('input[name="name"]').disabled = true;
         form.querySelector('input[name="has_spaces"]').disabled = true;
+        } else {
+        // Explicitly re-enable fields if the type is not in use
+        form.querySelector('input[name="name"]').disabled = false;
+        form.querySelector('input[name="has_spaces"]').disabled = false;
     }
 
     handleConditionalGridFields(form.closest('.modal-overlay'));

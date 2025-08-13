@@ -102,12 +102,13 @@ class LocationTypeForm(forms.ModelForm):
                 .values_list('parent__location_type_id', flat=True)
                 .distinct()
             )
+            # Combine circular dependency IDs with in-use IDs
             ids_to_disable.update(in_use_parent_ids)
-            
+
             self.fields['allowed_parents'].widget = DisabledOptionsCheckboxSelectMultiple(
                 disabled_choices=ids_to_disable
             )
-            self.fields['allowed_parents'].help_text = "Parents that are currently in use cannot be unselected."
+            self.fields['allowed_parents'].help_text = "Parents that are currently in use or would create a circular dependency cannot be unselected."
 
             # 2. Disable other fields if the type is already in use by a location.
             if self.instance.location_set.exists():
@@ -135,6 +136,7 @@ class LocationTypeForm(forms.ModelForm):
         Ensures that an in-use parent is not removed, even if the request is tampered with.
         """
         if self.instance and self.instance.pk:
+            # Get the set of parent types that are in use and cannot be removed.
             in_use_parent_ids = set(
                 Location.objects.filter(
                     location_type=self.instance,
@@ -143,18 +145,21 @@ class LocationTypeForm(forms.ModelForm):
                 .values_list('parent__location_type_id', flat=True)
                 .distinct()
             )
- 
+
+            # Get the set of parent IDs the user submitted with the form.
             selected_parent_ids = {p.id for p in self.cleaned_data.get('allowed_parents', [])}
- 
+
+            # Check if any required parents are missing from the user's submission.
             missing_parents = in_use_parent_ids - selected_parent_ids
             if missing_parents:
+                # If a required parent was unchecked, raise a validation error.
                 missing_parent_names = ", ".join(
                     LocationType.objects.filter(pk__in=missing_parents).values_list('name', flat=True)
                 )
                 raise forms.ValidationError(
                     f"You cannot remove the following parent(s) because they are in use: {missing_parent_names}"
                 )
- 
+
         return self.cleaned_data.get('allowed_parents')
 
     def clean(self):

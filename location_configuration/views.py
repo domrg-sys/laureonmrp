@@ -126,6 +126,16 @@ class LocationTypesTabView(PermissionRequiredMixin, GenericFormHandlingMixin, Te
         )
         context['edit_form'] = edit_form or LocationTypeForm()
         context['edit_form_has_errors'] = edit_has_errors
+        context['edit_form_action_info'] = None
+
+        if edit_has_errors and instance_id:
+            # If the re-rendered form has errors, we need to pass its original
+            # data payload to the template so the JavaScript can configure it.
+            instance = get_object_or_404(LocationType, pk=instance_id)
+            can_change = self.request.user.has_perm('location_configuration.change_locationtype')
+            
+            edit_action_data = self._get_edit_action_data(instance, can_change, instance.location_set.exists())
+            context['edit_form_action_info'] = edit_action_data.get('data')
 
         context['table_headers'] = [
             'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',

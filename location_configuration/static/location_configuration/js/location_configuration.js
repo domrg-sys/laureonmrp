@@ -212,6 +212,54 @@ function handleFormModalTriggerClick(event) {
 }
 
 
+/**
+ * Handles the configuration of forms within modals that are opened automatically
+ * on page load due to server-side validation errors. It ensures that any
+ * JavaScript-driven UI configurations are applied correctly.
+ */
+function handleFormErrorTrigger() {
+  document.querySelectorAll('.modal-overlay[data-is-open-on-load]').forEach(modal => {
+    const form = modal.querySelector('form');
+    if (!form) return;
+
+    // The form is already populated with data and errors by the server.
+    // It just needs to run the client-side configuration logic.
+    let config = { form };
+
+    // The configuration functions often need the original object's data,
+    // which should have attached to the modal itself on the server side.
+    if (modal.dataset.actionInfo) {
+      try {
+        config.data = JSON.parse(modal.dataset.actionInfo);
+      } catch (e) {
+        console.error("Failed to parse action-info data on modal:", e);
+        return; // Don't proceed without valid data
+      }
+    }
+
+    // Determine the correct configuration logic based on the modal's ID.
+    if (modal.id === 'add-type-modal') {
+      // The add form just needs its fields synced. It has no pre-existing data.
+      config.onConfigure = addTypeConfigure;
+    } else if (modal.id === 'edit-type-modal' && config.data) {
+      // The edit form needs its complex rules applied. The form fields
+      // ALREADY HAVE the user's errored input, so do NOT populate.
+      // Only run configure, which disables/hides fields correctly.
+      config.onConfigure = editTypeConfigure;
+    } else if (modal.id === 'edit-location-modal') {
+       // Similar to edit type, but needs has_children data
+       if (form.dataset.hasChildren) {
+           config.onConfigure = editLocationConfigure;
+       }
+    }
+
+    // If a configuration function was found, execute the protocol.
+    if (config.onConfigure) {
+      formProtocol(config);
+    }
+  });
+}
+
 // =========================================================================
 // === 3. INITIALIZERS (Strategies for the `initProtocol`)
 // =========================================================================
@@ -276,4 +324,8 @@ document.addEventListener("DOMContentLoaded", () => {
     initEditIconPicker,
     initFormModalTriggers
   ]);
+
+  // After the standard initializations, call the new handler to configure
+  // any forms that were re-rendered with validation errors.
+  handleFormErrorTrigger();
 });

@@ -1,70 +1,47 @@
 from django import forms
 from .models import LocationType, Location
 
-# --- WIDGETS ---
+# =========================================================================
+# === CUSTOM WIDGETS
+# =========================================================================
 
 class DisabledOptionsCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
-    """
-    A custom checkbox widget that grays out and disables specific choices.
-    This is used to prevent users from selecting invalid parents in edit mode.
-    """
+    # A custom widget that disables specific checkboxes in a multi-select field.
+    # This is used to prevent users from making invalid changes, such as creating
+    # circular dependencies in the LocationType hierarchy.
     def __init__(self, *args, **kwargs):
-        # Accept a custom 'disabled_choices' argument and store it.
         self.disabled_choices = set(kwargs.pop('disabled_choices', []))
         super().__init__(*args, **kwargs)
 
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
-        # Get the default option attributes from the parent class.
         option_dict = super().create_option(name, value, label, selected, index, subindex, attrs)
-        
-        # If this specific choice is in our disabled set, add the 'disabled' HTML attribute.
         if value in self.disabled_choices:
             option_dict['attrs']['disabled'] = True
-            
         return option_dict
 
-# --- CHOICES ---
+# =========================================================================
+# === CHOICES
+# =========================================================================
 
+# Defines the available icons for LocationType instances.
 ICON_CHOICES = [
-    # --- Buildings & Rooms ---
-    ('warehouse', 'Warehouse'),
-    ('factory', 'Factory'),
-    ('corporate_fare', 'Building'),
-    ('home_work', 'Office / Site'),
-    ('store', 'Storefront / Shop'),
-    ('room', 'Room (Generic)'),
-    ('door_front', 'Door / Entrance'),
-    ('domain', 'Building2'),
-    ('house', 'House'),
-    ('garage_door', 'Loading Dock'),
-    ('science', 'Lab'),
-
-    # --- Storage & Containers ---
-    ('shelves', 'Shelves'),
-    ('pallet', 'Pallet'),
-    ('inventory_2', 'Inventory Box'),
-    ('package', 'Package / Box'),
-    ('kitchen', 'Fridge'),
-    ('ac_unit', "Cold Storage"),
-    ('package_2', 'Box 2'),
-    ('lock', 'Secure'),
-    ('orders', 'Open Box'),
-
-    # --- Grids & Layouts ---
-    ('grid_view', 'Grid View'),
-    ('view_module', 'Module View'),
-    ('table_rows', 'Table Rows'),
-    ('window', 'Window / Pane'),
+    ('warehouse', 'Warehouse'), ('factory', 'Factory'), ('corporate_fare', 'Building'),
+    ('home_work', 'Office / Site'), ('store', 'Storefront / Shop'), ('room', 'Room (Generic)'),
+    ('door_front', 'Door / Entrance'), ('domain', 'Building2'), ('house', 'House'),
+    ('garage_door', 'Loading Dock'), ('science', 'Lab'), ('shelves', 'Shelves'),
+    ('pallet', 'Pallet'), ('inventory_2', 'Inventory Box'), ('package', 'Package / Box'),
+    ('kitchen', 'Fridge'), ('ac_unit', "Cold Storage"), ('package_2', 'Box 2'),
+    ('lock', 'Secure'), ('orders', 'Open Box'), ('grid_view', 'Grid View'),
+    ('view_module', 'Module View'), ('table_rows', 'Table Rows'), ('window', 'Window / Pane'),
 ]
 
-
-# --- FORMS ---
+# =========================================================================
+# === FORMS
+# =========================================================================
 
 class LocationTypeForm(forms.ModelForm):
-    """
-    A single, intelligent form for both creating and updating LocationType instances.
-    It adjusts its fields and validation based on whether it's in 'add' or 'edit' mode.
-    """
+    # A form for creating and updating LocationType instances. It contains
+    # dynamic logic that changes its behavior when editing an existing instance.
     icon = forms.ChoiceField(
         choices=ICON_CHOICES,
         required=False,
@@ -74,160 +51,103 @@ class LocationTypeForm(forms.ModelForm):
 
     class Meta:
         model = LocationType
-        fields = ['name', 'icon', 'allowed_parents', 'can_store_inventory', 'can_store_samples', 'has_spaces', 'rows', 'columns']
+        fields = [
+            'name', 'icon', 'allowed_parents', 'can_store_inventory', 
+            'can_store_samples', 'has_spaces', 'rows', 'columns'
+        ]
         widgets = {
-            # Note: This widget will be replaced dynamically in __init__ when in edit mode.
             'allowed_parents': forms.CheckboxSelectMultiple(),
         }
 
     def __init__(self, *args, **kwargs):
-        """
-        Applies conditional logic if the form is in 'edit' mode (i.e., bound to an instance).
-        """
         super().__init__(*args, **kwargs)
-
-        # This logic only runs if the form is bound to an existing instance.
+        # Only apply special logic if the form is bound to an existing instance.
         if self.instance and self.instance.pk:
-            
-            # 1. Gray out invalid parent choices to prevent circular dependencies.
-            descendants = self.instance.get_all_descendants()
-            ids_to_disable = {self.instance.pk} | {desc.pk for desc in descendants}
-            
-            # Find any parents that are actively in use
-            in_use_parent_ids = set(
-                Location.objects.filter(
-                    location_type=self.instance,
-                    parent__isnull=False
-                )
-                .values_list('parent__location_type_id', flat=True)
-                .distinct()
-            )
-            # Combine circular dependency IDs with in-use IDs
-            ids_to_disable.update(in_use_parent_ids)
+            self._configure_parent_choices()
+            self._disable_fields_if_in_use()
 
-            self.fields['allowed_parents'].widget = DisabledOptionsCheckboxSelectMultiple(
-                disabled_choices=ids_to_disable
-            )
-            self.fields['allowed_parents'].help_text = "Parents that are currently in use or would create a circular dependency cannot be unselected."
+    def _configure_parent_choices(self):
+        # Disables parent choices that would create a circular dependency
+        # or are part of an existing, in-use relationship.
+        descendants = self.instance.get_all_descendants()
+        circular_dependency_ids = {self.instance.pk} | {d.pk for d in descendants}
+        
+        in_use_parent_ids = set(
+            Location.objects.filter(location_type=self.instance, parent__isnull=False)
+            .values_list('parent__location_type_id', flat=True)
+            .distinct()
+        )
+        
+        ids_to_disable = circular_dependency_ids.union(in_use_parent_ids)
 
-            # 2. Disable other fields if the type is already in use by a location.
-            if self.instance.location_set.exists():
-                self.fields['has_spaces'].disabled = True
-                self.fields['rows'].disabled = True
-                self.fields['columns'].disabled = True
+        self.fields['allowed_parents'].widget = DisabledOptionsCheckboxSelectMultiple(
+            disabled_choices=ids_to_disable
+        )
+        self.fields['allowed_parents'].help_text = (
+            "Parents that are in use or would create a circular dependency cannot be changed."
+        )
 
-    def clean_name(self):
-        """
-        Ensures the name is not changed if the field is disabled.
-        """
-        if self.fields.get('name') and self.fields['name'].disabled:
-            return self.instance.name
-        return self.cleaned_data.get('name')
-
-    def clean_has_spaces(self):
-        """
-        Ensures the 'has_spaces' value is not changed if the field is disabled.
-        """
-        if self.fields.get('has_spaces') and self.fields['has_spaces'].disabled:
-            return self.instance.has_spaces
-        return self.cleaned_data.get('has_spaces')
-    
-    def clean_rows(self):
-        """
-        Ensures the rows value is not changed if the field is disabled.
-        """
-        if self.fields.get('rows') and self.fields['rows'].disabled:
-            return self.instance.rows
-        return self.cleaned_data.get('rows')
-
-    def clean_columns(self):
-        """
-        Ensures the columns value is not changed if the field is disabled.
-        """
-        if self.fields.get('columns') and self.fields['columns'].disabled:
-            return self.instance.columns
-        return self.cleaned_data.get('columns')
-
-    def clean_allowed_parents(self):
-        """
-        Ensures that an in-use parent is not removed, even if the request is tampered with
-        or a disabled checkbox is not submitted.
-        """
-        if self.instance and self.instance.pk:
-            # Get the set of parent type IDs that are in use and cannot be removed.
-            in_use_parent_ids = set(
-                Location.objects.filter(
-                    location_type=self.instance,
-                    parent__isnull=False
-                )
-                .values_list('parent__location_type_id', flat=True)
-                .distinct()
-            )
-
-            # This is the QuerySet of parents the user actually submitted.
-            # It will be empty for parents whose checkboxes were disabled.
-            submitted_parents = self.cleaned_data.get('allowed_parents', LocationType.objects.none())
-
-            # Get the IDs from the submitted QuerySet.
-            submitted_parent_ids = {p.id for p in submitted_parents}
-
-            # Find which required (in-use) parents are missing from the submission.
-            missing_in_use_ids = in_use_parent_ids - submitted_parent_ids
-
-            # If there are missing parents, fetch them and add them to the submitted QuerySet.
-            if missing_in_use_ids:
-                missing_parents_to_add = LocationType.objects.filter(pk__in=missing_in_use_ids)
-                # Combine the submitted parents with the ones that must be re-added.
-                return submitted_parents | missing_parents_to_add
-
-            # If no in-use parents were missing, return the original submission.
-            return submitted_parents
-
-        # If this is a new instance, just return the data as-is.
-        return self.cleaned_data.get('allowed_parents')
+    def _disable_fields_if_in_use(self):
+        # If a LocationType is used by any Location, certain fields that define
+        # its fundamental structure (like its grid) are locked to prevent data corruption.
+        if self.instance.location_set.exists():
+            self.fields['has_spaces'].disabled = True
+            self.fields['rows'].disabled = True
+            self.fields['columns'].disabled = True
 
     def clean(self):
-        """
-        Handles all validation for both 'add' and 'edit' modes.
-        """
-        cleaned_data = super().clean()
-        name = cleaned_data.get('name')
+        # This orchestrates all form-wide validation steps.
+        super().clean()
+        self._validate_name_uniqueness()
+        self._validate_grid_fields()
+        return self.cleaned_data
 
-        if name:
-            queryset = LocationType.objects.filter(name__iexact=name)
-            # If editing, exclude the current instance from the check.
-            if self.instance and self.instance.pk:
-                queryset = queryset.exclude(pk=self.instance.pk)
-            # If another type with this name exists, raise an error.
-            if queryset.exists():
-                raise forms.ValidationError(
-                    f"A location type with the name '{name}' already exists."
-                )
-        
-        # Validation for grid spaces (runs in both modes).
-        has_spaces = cleaned_data.get("has_spaces")
-        if has_spaces:
-            if not cleaned_data.get("rows"):
+    def _validate_name_uniqueness(self):
+        # Ensures that no two LocationTypes have the same name (case-insensitive).
+        name = self.cleaned_data.get('name')
+        if not name:
+            return
+            
+        queryset = LocationType.objects.filter(name__iexact=name)
+        if self.instance and self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise forms.ValidationError(
+                f"A location type with the name '{name}' already exists."
+            )
+
+    def _validate_grid_fields(self):
+        # Ensures that if 'Has Spaces' is checked, both rows and columns are provided.
+        if self.cleaned_data.get("has_spaces"):
+            if not self.cleaned_data.get("rows"):
                 self.add_error('rows', "This field is required when 'Has Spaces' is checked.")
-            if not cleaned_data.get("columns"):
+            if not self.cleaned_data.get("columns"):
                 self.add_error('columns', "This field is required when 'Has Spaces' is checked.")
 
-        # Validation for parent hierarchy (only relevant in edit mode, but harmless in add mode).
+    def clean_allowed_parents(self):
+        # Provides a backend safeguard to ensure that an in-use parent relationship
+        # cannot be removed, even if the form submission is tampered with.
         if self.instance and self.instance.pk:
-            selected_parents = cleaned_data.get('allowed_parents')
-            if selected_parents:
-                # This check prevents a user from making a type a child of its own descendant.
-                # It serves as a backend safeguard in case the 'disabled' attribute is bypassed.
-                descendants = self.instance.get_all_descendants()
-                for parent in selected_parents:
-                    if parent in descendants:
-                        raise forms.ValidationError(
-                            f"Circular dependency detected: You cannot set '{parent.name}' as a parent."
-                        )
-        
-        return cleaned_data
-    
+            in_use_parent_ids = set(
+                Location.objects.filter(location_type=self.instance, parent__isnull=False)
+                .values_list('parent__location_type_id', flat=True)
+                .distinct()
+            )
+            submitted_parents = self.cleaned_data.get('allowed_parents', LocationType.objects.none())
+            submitted_parent_ids = {p.id for p in submitted_parents}
+            
+            # If a required parent is missing from the submission, add it back.
+            missing_in_use_ids = in_use_parent_ids - submitted_parent_ids
+            if missing_in_use_ids:
+                missing_parents = LocationType.objects.filter(pk__in=missing_in_use_ids)
+                return submitted_parents | missing_parents
+
+        return self.cleaned_data.get('allowed_parents')
+
+
 class LocationForm(forms.ModelForm):
+    # A form for creating and updating Location instances. It dynamically adjusts
+    # the available 'location_type' choices based on the selected parent.
     class Meta:
         model = Location
         fields = ['name', 'location_type', 'parent']
@@ -235,63 +155,53 @@ class LocationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['parent'].required = False
-        parent_id = None
+        self._filter_location_type_choices()
+        self._disable_fields_if_has_children()
 
-        # On POST, the parent is in self.data, not self.initial
-        if 'parent' in self.data:
-            try:
-                parent_id = int(self.data.get('parent'))
-            except (ValueError, TypeError):
-                parent_id = None
-        elif 'parent' in self.initial:
-            parent_id = self.initial.get('parent')
-
+    def _filter_location_type_choices(self):
+        # Determines the correct queryset for the 'location_type' field based
+        # on whether the location is a top-level location or a child.
+        parent_id = self.data.get('parent') if 'parent' in self.data else self.initial.get('parent')
+        
         if parent_id:
             try:
                 parent_location = Location.objects.get(pk=parent_id)
                 self.fields['location_type'].queryset = parent_location.location_type.allowed_children.all()
-            except Location.DoesNotExist:
+            except (Location.DoesNotExist, ValueError, TypeError):
                 self.fields['location_type'].queryset = LocationType.objects.none()
         else:
-            # No parent, so these are top-level locations
+            # If no parent, only show types that can be top-level.
             self.fields['location_type'].queryset = LocationType.objects.filter(allowed_parents__isnull=True)
-
+    
+    def _disable_fields_if_has_children(self):
+        # If a Location has children, its own type cannot be changed, as this
+        # could break the parent-child relationship rules.
         if self.instance and self.instance.pk and self.instance.children.exists():
             self.fields['location_type'].disabled = True
             self.fields['location_type'].help_text = "This location has children, so its type cannot be changed."
 
+    def clean(self):
+        # Orchestrates form-wide validation.
+        super().clean()
+        self._validate_name_uniqueness()
+        return self.cleaned_data
+    
+    def _validate_name_uniqueness(self):
+        # Ensures that no two Locations have the same name (case-insensitive).
+        name = self.cleaned_data.get('name')
+        if not name:
+            return
+            
+        queryset = Location.objects.filter(name__iexact=name)
+        if self.instance and self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise forms.ValidationError(
+                f"A location with the name '{name}' already exists."
+            )
 
     def clean_location_type(self):
-        """
-        Ensures the location_type is not changed if the field is disabled.
-        """
-        # If the field is disabled, its value will not be in the cleaned_data.
-        # We must return the original value from the instance.
-        if self.fields['location_type'].disabled:
+        # A safeguard to prevent changing the location_type if the field is disabled.
+        if self.fields.get('location_type') and self.fields['location_type'].disabled:
             return self.instance.location_type
         return self.cleaned_data.get('location_type')
-    
-    def clean(self):
-            """
-            Checks for duplicate location names, ignoring case. No two locations
-            can have the same name, regardless of their position in the hierarchy.
-            """
-            cleaned_data = super().clean()
-            name = cleaned_data.get('name')
-
-            if name:
-                # Perform a case-insensitive search for the name.
-                queryset = Location.objects.filter(name__iexact=name)
-                
-                # If we are editing an existing instance, exclude it from the check
-                # to allow saving without changing its name.
-                if self.instance and self.instance.pk:
-                    queryset = queryset.exclude(pk=self.instance.pk)
-
-                # If any other location with that name exists, it's an error.
-                if queryset.exists():
-                    raise forms.ValidationError(
-                        f"A location with the name '{name}' already exists."
-                    )
-            
-            return cleaned_data

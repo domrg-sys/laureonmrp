@@ -138,35 +138,6 @@ const genericClear = (form) => {
   uiUtils.clearFormErrors(form);
 };
 
-/**
- * Configures the "rows" and "columns" fields based on the
- * "has_spaces" checkbox and attaches a listener for dynamic updates.
- */
-const configureHasSpaces = (form) => {
-  const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
-  const rowsInput = form.querySelector('input[name="rows"]');
-  const columnsInput = form.querySelector('input[name="columns"]');
-
-  // This function contains the logic to run on load and on change.
-  const syncFields = () => {
-    const isChecked = hasSpacesCheckbox.checked;
-    rowsInput.disabled = !isChecked;
-    columnsInput.disabled = !isChecked;
-    if (!isChecked) {
-      rowsInput.value = '';
-      columnsInput.value = '';
-    }
-  };
-
-  // Run once to set the initial state.
-  syncFields();
-
-  // Add the listener only if it hasn't been attached before.
-  if (!hasSpacesCheckbox.dataset.listenerAttached) {
-    hasSpacesCheckbox.addEventListener('change', syncFields);
-    hasSpacesCheckbox.dataset.listenerAttached = 'true';
-  }
-};
 
 // =========================================================================
 // === 2. EVENT HANDLERS
@@ -258,6 +229,7 @@ const initFormModalTriggers = () => {
   });
 };
 
+
 // =========================================================================
 // === 4. MAIN EXECUTION
 // =========================================================================
@@ -266,6 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initProtocol([
     initAddIconPicker,
     initEditIconPicker,
-    initFormModalTriggers,
+    initFormModalTriggers
   ]);
 });

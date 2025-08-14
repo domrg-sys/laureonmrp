@@ -22,9 +22,28 @@ const addTypeClear = (form) => {
 
 /** Configures the "Add Type" form fields based on checkbox states. */
 const addTypeConfigure = (form) => {
-  const hasSpaces = form.querySelector('input[name="has_spaces"]').checked;
-  form.querySelector('input[name="rows"]').disabled = !hasSpaces;
-  form.querySelector('input[name="columns"]').disabled = !hasSpaces;
+    const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
+    const rowsInput = form.querySelector('input[name="rows"]');
+    const columnsInput = form.querySelector('input[name="columns"]');
+
+    const syncFields = () => {
+        const isChecked = hasSpacesCheckbox.checked;
+        rowsInput.disabled = !isChecked;
+        columnsInput.disabled = !isChecked;
+        if (!isChecked) {
+            rowsInput.value = '';
+            columnsInput.value = '';
+        }
+    };
+
+    // Run once to set the initial state when the modal opens.
+    syncFields();
+
+    // Attach the listener for live interaction.
+    if (!hasSpacesCheckbox.dataset.listenerAttached) {
+        hasSpacesCheckbox.addEventListener('change', syncFields);
+        hasSpacesCheckbox.dataset.listenerAttached = 'true';
+    }
 };
 
 /** Populates the "Edit Type" form with data from the server. */
@@ -50,30 +69,47 @@ const editTypePopulate = (form, data) => {
 
 /** Configures the "Edit Type" form fields based on complex rules. */
 const editTypeConfigure = (form, data) => {
-  form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
-    cb.disabled = false;
-    cb.closest('label').style.display = '';
-  });
-
-  if (data.invalid_parent_ids) {
-    data.invalid_parent_ids.forEach(id => {
-      const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
-      if (cb) cb.closest('label').style.display = 'none';
+    // --- Parent checkbox logic ---
+    form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
+        cb.disabled = false;
+        cb.closest('label').style.display = '';
     });
-  }
+    if (data.invalid_parent_ids) {
+        data.invalid_parent_ids.forEach(id => {
+            const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
+            if (cb) cb.closest('label').style.display = 'none';
+        });
+    }
+    if (data.in_use_parent_type_ids) {
+        data.in_use_parent_type_ids.forEach(id => {
+            const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
+            if (cb) cb.disabled = true;
+        });
+    }
 
-  if (data.in_use_parent_type_ids) {
-    data.in_use_parent_type_ids.forEach(id => {
-      const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
-      if (cb) cb.disabled = true;
-    });
-  }
+    // --- "Has Spaces" logic ---
+    const isInUse = data['is-in-use'];
+    const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
+    const rowsInput = form.querySelector('input[name="rows"]');
+    const columnsInput = form.querySelector('input[name="columns"]');
 
-  const isInUse = data['is-in-use'];
-  const hasSpacesChecked = form.querySelector('input[name="has_spaces"]').checked;
-  form.querySelector('input[name="has_spaces"]').disabled = isInUse;
-  form.querySelector('input[name="rows"]').disabled = isInUse || !hasSpacesChecked;
-  form.querySelector('input[name="columns"]').disabled = isInUse || !hasSpacesChecked;
+    const syncEditFields = () => {
+        const isChecked = hasSpacesCheckbox.checked;
+        rowsInput.disabled = isInUse || !isChecked;
+        columnsInput.disabled = isInUse || !isChecked;
+        if (!isChecked) {
+            rowsInput.value = '';
+            columnsInput.value = '';
+        }
+    };
+
+    hasSpacesCheckbox.disabled = isInUse;
+    syncEditFields();
+
+    if (!hasSpacesCheckbox.dataset.listenerAttached) {
+        hasSpacesCheckbox.addEventListener('change', syncEditFields);
+        hasSpacesCheckbox.dataset.listenerAttached = 'true';
+    }
 };
 
 

@@ -46,6 +46,28 @@ const addTypeConfigure = (form) => {
     }
 };
 
+/** Resets the "Edit Type" form to a pristine visual and data state. */
+const editTypeClear = (form) => {
+    // Run the generic clear to handle fields and error messages.
+    genericClear(form);
+
+    // Explicitly reset UI elements that are manipulated by editTypeConfigure.
+    // This prevents state from a previous modal from "leaking" into the next.
+    form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
+        cb.disabled = false;
+        cb.closest('label').style.display = '';
+    });
+
+    const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
+    if (hasSpacesCheckbox) hasSpacesCheckbox.disabled = false;
+
+    const rowsInput = form.querySelector('input[name="rows"]');
+    if (rowsInput) rowsInput.disabled = true; // Should be disabled by default
+
+    const columnsInput = form.querySelector('input[name="columns"]');
+    if (columnsInput) columnsInput.disabled = true; // Should be disabled by default
+};
+
 /** Populates the "Edit Type" form with data from the server. */
 const editTypePopulate = (form, data) => {
   form.querySelector('input[name="location_type_id"]').value = data.location_type_id;
@@ -112,6 +134,26 @@ const editTypeConfigure = (form, data) => {
     }
 };
 
+/** Configures the "Add Type" form when it's re-rendered with errors. */
+const configureAddTypeErrorForm = (form, data) => {
+  formProtocol({ form, data, onConfigure: addTypeConfigure });
+};
+
+/** Configures the "Edit Type" form when it's re-rendered with errors. */
+const configureEditTypeErrorForm = (form, data) => {
+  if (!data) return;
+
+  // Manually restore the `allowed_parents` checkbox state, which is lost on error.
+  if (data.allowed_parents) {
+    data.allowed_parents.forEach(id => {
+      const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
+      if (cb) cb.checked = true;
+    });
+  }
+  
+  // With the checkboxes corrected, run the main configuration logic.
+  formProtocol({ form, data, onConfigure: editTypeConfigure });
+};
 
 // --- B. For the "Location" Forms ---
 
@@ -165,6 +207,12 @@ const editLocationConfigure = (form) => {
   }
 };
 
+/** Configures the "Edit Location" form when it's re-rendered with errors. */
+const configureEditLocationErrorForm = (form, data) => {
+  if (form.dataset.hasChildren) {
+    formProtocol({ form, data, onConfigure: editLocationConfigure });
+  }
+};
 
 // --- C. Generic & Reusable Strategies ---
 
@@ -195,7 +243,7 @@ function handleFormModalTriggerClick(event) {
     config = { ...config, onClear: addTypeClear, onConfigure: addTypeConfigure };
   }
   else if (modalTarget === '#edit-type-modal') {
-    config = { ...config, data: JSON.parse(button.dataset.actionInfo), onClear: genericClear, onPopulate: editTypePopulate, onConfigure: editTypeConfigure };
+    config = { ...config, data: JSON.parse(button.dataset.actionInfo), onClear: editTypeClear, onPopulate: editTypePopulate, onConfigure: editTypeConfigure };
   }
   else if (modalTarget === '#add-location-modal'){
     config = { ...config, onClear: genericClear };
@@ -214,49 +262,36 @@ function handleFormModalTriggerClick(event) {
 
 /**
  * Handles the configuration of forms within modals that are opened automatically
- * on page load due to server-side validation errors. It ensures that any
- * JavaScript-driven UI configurations are applied correctly.
+ * on page load due to server-side validation errors.
  */
 function handleFormErrorTrigger() {
+  // A map linking modal IDs to their specific error-handling functions.
+  const errorHandlers = {
+    'add-type-modal': configureAddTypeErrorForm,
+    'edit-type-modal': configureEditTypeErrorForm,
+    'edit-location-modal': configureEditLocationErrorForm,
+  };
+
   document.querySelectorAll('.modal-overlay[data-is-open-on-load]').forEach(modal => {
     const form = modal.querySelector('form');
     if (!form) return;
 
-    // The form is already populated with data and errors by the server.
-    // It just needs to run the client-side configuration logic.
-    let config = { form };
-
-    // The configuration functions often need the original object's data,
-    // which should have attached to the modal itself on the server side.
+    // Find the correct handler for this modal, or do nothing if none exists.
+    const handler = errorHandlers[modal.id];
+    if (!handler) return;
+    
+    let data = null;
     if (modal.dataset.actionInfo) {
       try {
-        config.data = JSON.parse(modal.dataset.actionInfo);
+        data = JSON.parse(modal.dataset.actionInfo);
       } catch (e) {
-        console.error("Failed to parse action-info data on modal:", e);
+        console.error(`Failed to parse action-info data on modal '${modal.id}':`, e);
         return; // Don't proceed without valid data
       }
     }
-
-    // Determine the correct configuration logic based on the modal's ID.
-    if (modal.id === 'add-type-modal') {
-      // The add form just needs its fields synced. It has no pre-existing data.
-      config.onConfigure = addTypeConfigure;
-    } else if (modal.id === 'edit-type-modal' && config.data) {
-      // The edit form needs its complex rules applied. The form fields
-      // ALREADY HAVE the user's errored input, so do NOT populate.
-      // Only run configure, which disables/hides fields correctly.
-      config.onConfigure = editTypeConfigure;
-    } else if (modal.id === 'edit-location-modal') {
-       // Similar to edit type, but needs has_children data
-       if (form.dataset.hasChildren) {
-           config.onConfigure = editLocationConfigure;
-       }
-    }
-
-    // If a configuration function was found, execute the protocol.
-    if (config.onConfigure) {
-      formProtocol(config);
-    }
+    
+    // Execute the appropriate handler with the form and its data.
+    handler(form, data);
   });
 }
 

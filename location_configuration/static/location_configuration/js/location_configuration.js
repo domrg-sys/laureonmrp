@@ -138,6 +138,35 @@ const genericClear = (form) => {
   uiUtils.clearFormErrors(form);
 };
 
+/**
+ * Configures the "rows" and "columns" fields based on the
+ * "has_spaces" checkbox and attaches a listener for dynamic updates.
+ */
+const configureHasSpaces = (form) => {
+  const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
+  const rowsInput = form.querySelector('input[name="rows"]');
+  const columnsInput = form.querySelector('input[name="columns"]');
+
+  // This function contains the logic to run on load and on change.
+  const syncFields = () => {
+    const isChecked = hasSpacesCheckbox.checked;
+    rowsInput.disabled = !isChecked;
+    columnsInput.disabled = !isChecked;
+    if (!isChecked) {
+      rowsInput.value = '';
+      columnsInput.value = '';
+    }
+  };
+
+  // Run once to set the initial state.
+  syncFields();
+
+  // Add the listener only if it hasn't been attached before.
+  if (!hasSpacesCheckbox.dataset.listenerAttached) {
+    hasSpacesCheckbox.addEventListener('change', syncFields);
+    hasSpacesCheckbox.dataset.listenerAttached = 'true';
+  }
+};
 
 // =========================================================================
 // === 2. EVENT HANDLERS
@@ -180,16 +209,45 @@ function handleFormModalTriggerClick(event) {
 // === 3. INITIALIZERS (Strategies for the `initProtocol`)
 // =========================================================================
 
+/** A helper to generate the HTML templates for our icon picker. */
+const getIconPickerTemplates = (template) => {
+  // A single template for rendering the icon ONLY.
+  const renderIcon = (data) => `
+    <span class="material-symbols-outlined">${data.value}</span>
+  `;
+
+  return {
+    item: (classNames, data) => template(
+      `<div class="${classNames.item}" data-item data-id="${data.id}" data-value="${data.value}">${renderIcon(data)}</div>`
+    ),
+    choice: (classNames, data) => template(
+      `<div class="${classNames.item} ${classNames.itemChoice}" data-choice data-id="${data.id}" data-value="${data.value}">${renderIcon(data)}</div>`
+    ),
+  };
+};
+
 /** Creates the Choices.js instance for the "Add Type" modal's icon picker. */
 const initAddIconPicker = () => {
   const el = document.querySelector('#add-type-modal .js-choice-icon-picker');
-  if (el) pageState.addTypeIconPicker = new Choices(el, { searchEnabled: false, itemSelectText: '', /*...template config...*/ });
+  if (el) {
+    pageState.addTypeIconPicker = new Choices(el, {
+      searchEnabled: false,
+      itemSelectText: '',
+      callbackOnCreateTemplates: getIconPickerTemplates,
+    });
+  }
 };
 
 /** Creates the Choices.js instance for the "Edit Type" modal's icon picker. */
 const initEditIconPicker = () => {
   const el = document.querySelector('#edit-type-modal .js-choice-icon-picker');
-  if (el) pageState.editTypeIconPicker = new Choices(el, { searchEnabled: false, itemSelectText: '', /*...template config...*/ });
+  if (el) {
+    pageState.editTypeIconPicker = new Choices(el, {
+      searchEnabled: false,
+      itemSelectText: '',
+      callbackOnCreateTemplates: getIconPickerTemplates,
+    });
+  }
 };
 
 /** Attaches the main event handler to all form-opening buttons. */
@@ -200,7 +258,6 @@ const initFormModalTriggers = () => {
   });
 };
 
-
 // =========================================================================
 // === 4. MAIN EXECUTION
 // =========================================================================
@@ -209,6 +266,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initProtocol([
     initAddIconPicker,
     initEditIconPicker,
-    initFormModalTriggers
+    initFormModalTriggers,
   ]);
 });

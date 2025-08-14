@@ -196,7 +196,6 @@ async function handleEditLocation(button) {
         });
         selectElement.value = data.current_location_type_id;
 
-        // --- THIS IS THE NEW LOGIC ---
         // Disable the dropdown if the location has children.
         selectElement.disabled = data.has_children;
 

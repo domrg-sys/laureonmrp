@@ -191,6 +191,18 @@ class LocationTypeForm(forms.ModelForm):
         Handles all validation for both 'add' and 'edit' modes.
         """
         cleaned_data = super().clean()
+        name = cleaned_data.get('name')
+
+        if name:
+            queryset = LocationType.objects.filter(name__iexact=name)
+            # If editing, exclude the current instance from the check.
+            if self.instance and self.instance.pk:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            # If another type with this name exists, raise an error.
+            if queryset.exists():
+                raise forms.ValidationError(
+                    f"A location type with the name '{name}' already exists."
+                )
         
         # Validation for grid spaces (runs in both modes).
         has_spaces = cleaned_data.get("has_spaces")
@@ -258,3 +270,28 @@ class LocationForm(forms.ModelForm):
         if self.fields['location_type'].disabled:
             return self.instance.location_type
         return self.cleaned_data.get('location_type')
+    
+    def clean(self):
+            """
+            Checks for duplicate location names, ignoring case. No two locations
+            can have the same name, regardless of their position in the hierarchy.
+            """
+            cleaned_data = super().clean()
+            name = cleaned_data.get('name')
+
+            if name:
+                # Perform a case-insensitive search for the name.
+                queryset = Location.objects.filter(name__iexact=name)
+                
+                # If we are editing an existing instance, exclude it from the check
+                # to allow saving without changing its name.
+                if self.instance and self.instance.pk:
+                    queryset = queryset.exclude(pk=self.instance.pk)
+
+                # If any other location with that name exists, it's an error.
+                if queryset.exists():
+                    raise forms.ValidationError(
+                        f"A location with the name '{name}' already exists."
+                    )
+            
+            return cleaned_data

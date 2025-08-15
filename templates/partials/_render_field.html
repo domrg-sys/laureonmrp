@@ -1,4 +1,4 @@
-<div class="form-field {% if field.errors %}has-error{% endif %}">
+<div class="form-field">
 
   {# Handle special case for CheckboxSelectMultiple (e.g., ManyToManyField) #}
   {% if field.field.widget.template_name == 'django/forms/widgets/checkbox_select.html' %}

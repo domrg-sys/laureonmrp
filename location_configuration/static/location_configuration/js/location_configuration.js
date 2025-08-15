@@ -132,6 +132,10 @@ async function handleFormSubmit(event) {
  */
 function displayFormErrors(form, errors) {
     clearFormErrors(form);
+    const modalBody = form.closest('.modal-body');
+    if (modalBody) {
+        modalBody.scrollTop = 0;
+    }
     const summaryContainer = form.querySelector('.form-error-summary-container');
     if (!summaryContainer) return;
 
@@ -177,9 +181,19 @@ function addTypeConfigure(form) {
 
     const syncGridInputs = () => {
         const isChecked = hasSpacesCheckbox.checked;
-        rowsInput.disabled = !isChecked;
-        columnsInput.disabled = !isChecked;
-        if (!isChecked) { rowsInput.value = ''; columnsInput.value = ''; }
+        const isCheckboxDisabled = hasSpacesCheckbox.disabled;
+
+        // Disable grid inputs if the checkbox is unchecked OR if the checkbox itself is disabled.
+        const shouldDisableGridInputs = !isChecked || isCheckboxDisabled;
+        rowsInput.disabled = shouldDisableGridInputs;
+        columnsInput.disabled = shouldDisableGridInputs;
+
+        // Only clear the values if the user unchecks the box themselves.
+        // Do not clear if the box is disabled.
+        if (!isChecked && !isCheckboxDisabled) {
+            rowsInput.value = '';
+            columnsInput.value = '';
+        }
     };
     syncGridInputs();
     hasSpacesCheckbox.addEventListener('change', syncGridInputs);
@@ -188,6 +202,13 @@ function addTypeConfigure(form) {
 /** A custom onClear step for the edit type form to reset hidden/disabled parents. */
 function editTypeClear(form) {
     genericClear(form); // Run the standard clear process first
+
+    // Re-enable the 'has_spaces' checkbox to prevent its disabled state from leaking.
+    const hasSpacesCheckbox = form.querySelector('[name="has_spaces"]');
+    if (hasSpacesCheckbox) {
+        hasSpacesCheckbox.disabled = false;
+    }
+
     form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
         // Find the <label> that wraps the checkbox
         const parentContainer = cb.parentElement;

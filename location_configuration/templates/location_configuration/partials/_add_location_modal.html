@@ -9,7 +9,7 @@
             </button>
         </div>
         <div class="modal-body">
-            <form action="{% url 'location_configuration:add_location' %}" method="post">
+            <form action="{% url 'location_configuration:add_location' %}" method="post" novalidate>
                 {% csrf_token %}
                 <div class="form-error-summary-container"></div>
                 {% render_field form.name %}

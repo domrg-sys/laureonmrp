@@ -9,7 +9,7 @@
             </button>
         </div>
         <div class="modal-body">
-            <form id="add-child-location-form" action="{% url 'location_configuration:add_child_location' %}" method="post">
+            <form id="add-child-location-form" action="{% url 'location_configuration:add_child_location' %}" method="post" novalidate>
                 {% csrf_token %}
                 <input type="hidden" name="parent" id="parent-location-id">
 

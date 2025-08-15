@@ -153,9 +153,16 @@ class LocationForm(forms.ModelForm):
         fields = ['name', 'location_type', 'parent']
 
     def __init__(self, *args, **kwargs):
+        form_type = kwargs.pop('form_type', None)
         super().__init__(*args, **kwargs)
         self.fields['parent'].required = False
-        self._filter_location_type_choices()
+        # If this form is specifically for adding a child, start with an empty
+        # queryset. The frontend JS will populate the correct options.
+        if form_type == 'add_child':
+            self.fields['location_type'].queryset = LocationType.objects.none()
+        else:
+            # Otherwise, use the original logic to determine choices.
+            self._filter_location_type_choices()
         self._disable_fields_if_has_children()
 
     def _filter_location_type_choices(self):

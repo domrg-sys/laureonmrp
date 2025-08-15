@@ -27,7 +27,7 @@ const FORM_CONFIG = {
     onConfigure: addTypeConfigure,
   },
   'edit-type-modal': {
-    onClear: genericClear,
+    onClear: editTypeClear,
     onPopulate: editTypePopulate,
     onConfigure: editTypeConfigure,
   },
@@ -185,6 +185,19 @@ function addTypeConfigure(form) {
     hasSpacesCheckbox.addEventListener('change', syncGridInputs);
 }
 
+/** A custom onClear step for the edit type form to reset hidden/disabled parents. */
+function editTypeClear(form) {
+    genericClear(form); // Run the standard clear process first
+    form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
+        // Find the <label> that wraps the checkbox
+        const parentContainer = cb.parentElement;
+        if (parentContainer) {
+            parentContainer.style.display = ''; // Make all options visible again
+        }
+        cb.disabled = false; // Re-enable the checkbox itself
+    });
+}
+
 /** Populates the 'Edit Location Type' form with instance data. */
 function editTypePopulate(form, data) {
     form.action = `/location_configuration/types/edit/${data.location_type_id}/`;
@@ -204,30 +217,85 @@ function editTypePopulate(form, data) {
 
 /** Configures fields in the 'Edit Location Type' form based on its state. */
 function editTypeConfigure(form, data) {
-    addTypeConfigure(form); // Re-use the same grid logic
     const isInUse = data['is-in-use'];
-    form.querySelector('[name="has_spaces"]').disabled = isInUse;
-    form.querySelector('[name="rows"]').disabled = isInUse;
-    form.querySelector('[name="columns"]').disabled = isInUse;
+    const hasSpacesCheckbox = form.querySelector('[name="has_spaces"]');
 
+    // Rule #1: If the type is in use, the "Has Spaces" checkbox must be disabled.
+    // This is done BEFORE calling the generic config to ensure it's respected.
+    if (isInUse) {
+        hasSpacesCheckbox.disabled = true;
+    }
+
+    // Now, run the generic configuration, which will correctly handle the state of the rows/columns fields.
+    addTypeConfigure(form);
+
+    // Continue with the rest of the configuration for allowed parents.
     form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
         const id = parseInt(cb.value);
-        cb.disabled = data.invalid_parent_ids.includes(id) || data.in_use_parent_type_ids.includes(id);
+        const parentContainer = cb.parentElement;
+        if (!parentContainer) return;
+
+        // Hide parents that would cause a circular dependency
+        if (data.invalid_parent_ids.includes(id)) {
+            parentContainer.style.display = 'none';
+        }
+        // Disable parents that are currently in use
+        else if (data.in_use_parent_type_ids.includes(id)) {
+            cb.disabled = true;
+        }
     });
 }
 
 /** Populates the 'Add Child Location' form, fetching valid child types. */
 async function addChildPopulate(form, data) {
+    // 1. Verify that the necessary data from the button's data attributes is present.
+    if (!data.parentId || !data.parentName) {
+        console.error("Add Child Modal: Missing parentId or parentName from the trigger button.", data);
+        return;
+    }
+
+    // 2. Populate the static and hidden fields in the form.
     form.action = `/location_configuration/locations/add-child/`;
     form.querySelector('#parent-location-name-title').textContent = data.parentName;
     form.querySelector('[name="parent"]').value = data.parentId;
     form.querySelector('#parent-location-name-display').value = data.parentName;
 
     const select = form.querySelector('select[name="location_type"]');
-    const response = await fetch(`/location_configuration/get-child-types/${data.parentId}/`);
-    const childTypes = await response.json();
-    select.innerHTML = '<option value="">Select a location type</option>';
-    childTypes.forEach(type => select.add(new Option(type.name, type.id)));
+    if (!select) {
+        console.error("Add Child Modal: Could not find the location_type select element in the form.");
+        return;
+    }
+
+    try {
+        // 3. Fetch the list of valid child types from the server.
+        const response = await fetch(`/location_configuration/get-child-types/${data.parentId}/`);
+        if (!response.ok) {
+            console.error("Failed to fetch child types. Server responded with status:", response.status);
+            return;
+        }
+        const childTypes = await response.json();
+
+        // 4. Build the dropdown options using a robust method.
+        // Clear any existing options first.
+        select.innerHTML = '';
+
+        // Add a default, placeholder option.
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Select a location type';
+        select.appendChild(placeholder);
+
+        // Create and add an option for each valid child type returned by the server.
+        childTypes.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type.id;
+            option.textContent = type.name;
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("An error occurred while fetching or populating child location types:", error);
+    }
 }
 
 /** Populates the 'Edit Location' form with details fetched from the server. */

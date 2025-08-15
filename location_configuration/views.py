@@ -51,7 +51,8 @@ class LocationsTabView(PermissionRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('locations'))
         context['add_location_form'] = LocationForm()
-        context['add_child_form'] = LocationForm()
+        # Pass the new form_type to ensure the location_type field is empty
+        context['add_child_form'] = LocationForm(form_type='add_child')
         context['edit_location_form'] = LocationForm()
         context['top_level_locations'] = Location.objects.filter(parent__isnull=True)
         context['can_delete_location'] = self.request.user.has_perm('location_configuration.delete_location')

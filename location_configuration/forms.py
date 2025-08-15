@@ -191,6 +191,9 @@ class LocationForm(forms.ModelForm):
                 del self.fields['parent_name']
             self._filter_location_type_choices()
 
+        elif form_type == 'edit_placeholder':
+            pass
+
         self._disable_fields_if_has_children()
 
     def _filter_location_type_choices(self):

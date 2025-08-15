@@ -39,7 +39,7 @@ const FORM_CONFIG = {
     onPopulate: addChildPopulate,
   },
   'edit-location-modal': {
-    onClear: genericClear,
+    onClear: editLocationClear,
     onPopulate: editLocationPopulate,
     onConfigure: editLocationConfigure,
   },
@@ -319,6 +319,17 @@ async function addChildPopulate(form, data) {
     }
 }
 
+/** A custom onClear step for the edit location form. */
+function editLocationClear(form) {
+    genericClear(form); // Run the standard clear process first.
+
+    // Ensure the parent_name container is visible again when the form is cleared.
+    const parentNameContainer = form.querySelector('[name="parent_name"]')?.closest('.form-field');
+    if (parentNameContainer) {
+        parentNameContainer.style.display = '';
+    }
+}
+
 async function editLocationPopulate(form, data) {
     form.action = `/location_configuration/locations/edit/${data.locationId}/`;
     const response = await fetch(`/location_configuration/get-location-details/${data.locationId}/`);
@@ -326,10 +337,19 @@ async function editLocationPopulate(form, data) {
     form.dataset.hasChildren = details.has_children;
     form.querySelector('[name="name"]').value = details.name;
 
-    // This section populates the parent name field if it exists and has a value.
     const parentNameField = form.querySelector('[name="parent_name"]');
-    if (parentNameField && details.parent_name) {
-        parentNameField.value = details.parent_name;
+    // We also find the entire container for the field, which includes its label.
+    const parentNameContainer = parentNameField ? parentNameField.closest('.form-field') : null;
+
+    if (parentNameContainer) {
+        if (details.parent_name) {
+            // If there is a parent, show the container and set the value.
+            parentNameContainer.style.display = '';
+            parentNameField.value = details.parent_name;
+        } else {
+            // If there is NO parent, hide the entire field container.
+            parentNameContainer.style.display = 'none';
+        }
     }
 
     const select = form.querySelector('select[name="location_type"]');

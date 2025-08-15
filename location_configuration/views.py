@@ -238,19 +238,18 @@ def get_child_location_types(request, parent_id):
     return JsonResponse(data, safe=False)
 
 def get_location_details(request, location_id):
-    """
-    Returns a JSON object with the data needed to populate the
-    'Edit Location' modal form.
-    """
     location = get_object_or_404(Location, pk=location_id)
     
+    parent_name = None
     if location.parent:
         valid_location_types = location.parent.location_type.allowed_children.all()
+        parent_name = location.parent.name  # Add the parent's name
     else:
         valid_location_types = LocationType.objects.filter(allowed_parents__isnull=True)
         
     data = {
         'name': location.name,
+        'parent_name': parent_name,  # Include it in the response
         'current_location_type_id': location.location_type.id,
         'valid_location_types': [{'id': lt.id, 'name': lt.name} for lt in valid_location_types],
         'has_children': location.children.exists()

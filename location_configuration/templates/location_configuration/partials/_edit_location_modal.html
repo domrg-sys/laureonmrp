@@ -11,8 +11,10 @@
         <div class="modal-body">
             <form action="" method="post" novalidate>
                 {% csrf_token %}
+                {{ form.parent }} {# Renders the hidden input for the parent ID #}
                 <div class="form-error-summary-container"></div>
 
+                {% render_field form.parent_name %} {# Renders the disabled parent name field #}
                 {% render_field form.name %}
                 {% render_field form.location_type %}
                 

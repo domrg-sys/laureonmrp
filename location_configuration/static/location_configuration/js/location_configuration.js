@@ -279,7 +279,7 @@ async function addChildPopulate(form, data) {
     form.action = `/location_configuration/locations/add-child/`;
     form.querySelector('#parent-location-name-title').textContent = data.parentName;
     form.querySelector('[name="parent"]').value = data.parentId;
-    form.querySelector('#parent-location-name-display').value = data.parentName;
+    form.querySelector('[name="parent_name"]').value = data.parentName;
 
     const select = form.querySelector('select[name="location_type"]');
     if (!select) {
@@ -326,6 +326,12 @@ async function editLocationPopulate(form, data) {
     const details = await response.json();
     form.dataset.hasChildren = details.has_children;
     form.querySelector('[name="name"]').value = details.name;
+
+    // This section populates the parent name field if it exists and has a value.
+    const parentNameField = form.querySelector('[name="parent_name"]');
+    if (parentNameField && details.parent_name) {
+        parentNameField.value = details.parent_name;
+    }
 
     const select = form.querySelector('select[name="location_type"]');
     select.innerHTML = '';

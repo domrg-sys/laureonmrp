@@ -148,21 +148,49 @@ class LocationTypeForm(forms.ModelForm):
 class LocationForm(forms.ModelForm):
     # A form for creating and updating Location instances. It dynamically adjusts
     # the available 'location_type' choices based on the selected parent.
+    parent_name = forms.CharField(
+        required=False,
+        label="Parent Location",
+        widget=forms.TextInput(attrs={'disabled': True})
+    )
+
     class Meta:
         model = Location
-        fields = ['name', 'location_type', 'parent']
+        fields = ['name', 'location_type', 'parent', 'parent_name']
 
     def __init__(self, *args, **kwargs):
         form_type = kwargs.pop('form_type', None)
         super().__init__(*args, **kwargs)
+
+        is_editing = self.instance and self.instance.pk
+        is_add_child = form_type == 'add_child'
+        
+        # --- Configure fields based on context ---
+
+        # The parent ID is always handled by a hidden input when a parent might exist.
         self.fields['parent'].required = False
-        # If this form is specifically for adding a child, start with an empty
-        # queryset. The frontend JS will populate the correct options.
-        if form_type == 'add_child':
-            self.fields['location_type'].queryset = LocationType.objects.none()
-        else:
-            # Otherwise, use the original logic to determine choices.
+        self.fields['parent'].widget = forms.HiddenInput()
+        
+        # Case 1: Adding a new top-level location.
+        if not is_editing and not is_add_child:
+            del self.fields['parent']
+            del self.fields['parent_name']
             self._filter_location_type_choices()
+
+        # Case 2: Adding a new child location.
+        elif is_add_child:
+            self.fields['location_type'].queryset = LocationType.objects.none()
+
+        # Case 3: Editing an existing location.
+        elif is_editing:
+            if self.instance.parent:
+                self.initial['parent_name'] = self.instance.parent.name
+            else:
+                # If editing a top-level location, it has no parent.
+                del self.fields['parent']
+                del self.fields['parent_name']
+            self._filter_location_type_choices()
+
         self._disable_fields_if_has_children()
 
     def _filter_location_type_choices(self):

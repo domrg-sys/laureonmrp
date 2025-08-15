@@ -319,7 +319,6 @@ async function addChildPopulate(form, data) {
     }
 }
 
-/** Populates the 'Edit Location' form with details fetched from the server. */
 async function editLocationPopulate(form, data) {
     form.action = `/location_configuration/locations/edit/${data.locationId}/`;
     const response = await fetch(`/location_configuration/get-location-details/${data.locationId}/`);

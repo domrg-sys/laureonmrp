@@ -146,8 +146,6 @@ class LocationTypeForm(forms.ModelForm):
 
 
 class LocationForm(forms.ModelForm):
-    # A form for creating and updating Location instances. It dynamically adjusts
-    # the available 'location_type' choices based on the selected parent.
     parent_name = forms.CharField(
         required=False,
         label="Parent Location",
@@ -156,6 +154,7 @@ class LocationForm(forms.ModelForm):
 
     class Meta:
         model = Location
+        # Add parent_name to the fields list
         fields = ['name', 'location_type', 'parent', 'parent_name']
 
     def __init__(self, *args, **kwargs):
@@ -164,7 +163,7 @@ class LocationForm(forms.ModelForm):
 
         is_editing = self.instance and self.instance.pk
         is_add_child = form_type == 'add_child'
-        
+
         # --- Configure fields based on context ---
 
         # The parent ID is always handled by a hidden input when a parent might exist.
@@ -184,6 +183,7 @@ class LocationForm(forms.ModelForm):
         # Case 3: Editing an existing location.
         elif is_editing:
             if self.instance.parent:
+                # If editing a child, populate the parent name display from the instance.
                 self.initial['parent_name'] = self.instance.parent.name
             else:
                 # If editing a top-level location, it has no parent.

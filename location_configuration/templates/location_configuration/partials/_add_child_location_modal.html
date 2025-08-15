@@ -15,7 +15,7 @@
 
                 <div class="form-error-summary-container"></div>
 
-                {{ form.parent }} {# This renders the hidden input for the parent ID #}
+                {% render_field form.parent_name %}
 
                 {% render_field form.name %}
                 {% render_field form.location_type %}

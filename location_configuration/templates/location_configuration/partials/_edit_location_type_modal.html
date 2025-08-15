@@ -1,9 +1,6 @@
 {% load form_tags %}
 
-<div class="modal-overlay" 
-     id="edit-type-modal"
-     {% if edit_form_has_errors %}data-is-open-on-load{% endif %}
-     {% if edit_form_action_info %}data-action-info='{{ edit_form_action_info }}'{% endif %}>    
+<div class="modal-overlay" id="edit-type-modal">    
      <div class="modal-content">
         <div class="modal-header">
             <h5 class="modal-title">Edit Location Type</h5>
@@ -12,12 +9,9 @@
             </button>
         </div>
         <div class="modal-body">
-            <form method="post" novalidate>
+            <form method="post">
                 {% csrf_token %}
-                <input type="hidden" name="location_type_id" value="{{ edit_form.instance.pk|default:'' }}">
-                <input type="hidden" name="edit_form_submit" value="true">
-
-                {% include "partials/_form_error_summary.html" with form=edit_form %}
+                <div class="form-error-summary-container"></div>
                 
                 {% render_field edit_form.name %}
                 {% render_field edit_form.icon %}

@@ -1,6 +1,6 @@
 {% load form_tags %}
 
-<div class="modal-overlay" id="add-child-location-modal" {% if add_child_form_has_errors %}data-is-open-on-load{% endif %}>
+<div class="modal-overlay" id="add-child-location-modal">
     <div class="modal-content">
         <div class="modal-header">
             <h5 class="modal-title">Add Child to <strong id="parent-location-name-title"></strong></h5>
@@ -9,12 +9,11 @@
             </button>
         </div>
         <div class="modal-body">
-            <form id="add-child-location-form" action="{% url 'location_configuration:locations_tab' %}" method="post" novalidate>
+            <form id="add-child-location-form" action="{% url 'location_configuration:add_child_location' %}" method="post">
                 {% csrf_token %}
-                <input type="hidden" name="form_name" value="add_child_form">
                 <input type="hidden" name="parent" id="parent-location-id">
 
-                {% include "partials/_form_error_summary.html" with form=form %}
+                <div class="form-error-summary-container"></div>
 
                 <div class="form-field">
                     <label for="parent-location-name-display">Parent Location</label>

@@ -1,3 +1,10 @@
+/**
+ * @file Manages the dynamic behavior of the Location Configuration page,
+ * including modal forms, AJAX submissions, and UI updates. This script
+ * uses a switchboard pattern to declaratively manage form preparation
+ * and a single set of handlers for AJAX operations.
+ */
+
 // A global object to hold state for this page, like plugin instances.
 const pageState = {
   addTypeIconPicker: null,
@@ -5,318 +12,282 @@ const pageState = {
 };
 
 // =========================================================================
-// === 1. PROTOCOL ENGINE
+// === 1. ARCHITECTURE: SWITCHBOARD & PROTOCOL ENGINE
 // =========================================================================
 
 /**
- * A flexible engine that executes a sequence of protocol steps.
- * @param {object} options.form - The HTML form element.
- * @param {object} options.data - The initial data payload.
- * @param {object} options.protocol - The protocol object containing the steps to run.
+ * The Switchboard: A pure configuration object that maps a modal's ID
+ * to the specific functions responsible for preparing its form. This
+ * declarative approach centralizes form setup logic, making it easier
+ * to maintain and reason about.
+ */
+const FORM_CONFIG = {
+  'add-type-modal': {
+    onClear: genericClear,
+    onConfigure: addTypeConfigure,
+  },
+  'edit-type-modal': {
+    onClear: genericClear,
+    onPopulate: editTypePopulate,
+    onConfigure: editTypeConfigure,
+  },
+  'add-location-modal': {
+    onClear: genericClear,
+  },
+  'add-child-location-modal': {
+    onClear: genericClear,
+    onPopulate: addChildPopulate,
+  },
+  'edit-location-modal': {
+    onClear: genericClear,
+    onPopulate: editLocationPopulate,
+    onConfigure: editLocationConfigure,
+  },
+};
+
+/**
+ * The Protocol Engine: A function that executes a sequence of form
+ * preparation steps (clear, populate, configure) based on a protocol
+ * object retrieved from the switchboard.
+ * @param {object} options - The options for running the protocol.
+ * @param {HTMLFormElement} options.form - The form to be prepared.
+ * @param {object} options.data - Data from the trigger element.
+ * @param {object} options.protocol - A configuration object from FORM_CONFIG.
  */
 async function runProtocol({ form, data, protocol }) {
   if (!protocol) return;
 
-  // Each step can modify the data for the next step.
-  let currentData = { ...data };
-
-  if (protocol.onScrape) {
-    const scrapedData = protocol.onScrape(form);
-    currentData = { ...currentData, ...scrapedData };
-  }
-  if (protocol.onClear) {
-    protocol.onClear(form, currentData);
-  }
-  if (protocol.onPopulate) {
-    await protocol.onPopulate(form, currentData);
-  }
-  if (protocol.onConfigure) {
-    protocol.onConfigure(form, currentData);
-  }
+  if (protocol.onClear) protocol.onClear(form, data);
+  if (protocol.onPopulate) await protocol.onPopulate(form, data);
+  if (protocol.onConfigure) protocol.onConfigure(form, data);
 }
 
 // =========================================================================
-// === 2. SWITCHBOARD
+// === 2. CORE LOGIC: EVENT HANDLERS
 // =========================================================================
 
-const FORM_CONFIG = {
-  'add-type-modal': {
-    normal: {
-      onClear: addTypeClear,
-      onConfigure: addTypeConfigure,
-    },
-    error: {
-      onConfigure: addTypeConfigure,
-    },
-  },
-  'edit-type-modal': {
-    normal: {
-      onClear: editTypeClear,
-      onPopulate: editTypePopulate,
-      onConfigure: editTypeConfigure,
-    },
-    error: {
-      // The specific, multi-step protocol for the error state.
-      onScrape: scrapeEditTypeDataFromForm,
-      onPopulate: editTypePopulate,
-      onConfigure: editTypeConfigure,
-    },
-  },
-  'add-location-modal': {
-    normal: {
-      onClear: genericClear,
-    },
-    error: {}, // No specific error protocol needed
-  },
-  'edit-location-modal': {
-    normal: {
-      onClear: genericClear,
-      onPopulate: editLocationPopulate,
-      onConfigure: editLocationConfigure,
-    },
-    error: {
-      onPopulate: editLocationPopulate, // Must repopulate to get hasChildren flag
-      onConfigure: editLocationConfigure,
-    },
-  },
-  'add-child-location-modal': {
-    normal: {
-      onClear: genericClear,
-      onPopulate: addChildPopulate,
-    },
-    error: {
-      onPopulate: addChildPopulate, // Must repopulate to fetch child types
-    },
-  },
-};
+/**
+ * Handles the click event for modal trigger buttons. This function serves as
+ * the entry point for preparing and displaying a modal. It finds the correct
+ * configuration in the switchboard and uses the protocol engine to execute it.
+ * @param {Event} event - The click event.
+ */
+function handleModalTriggerClick(event) {
+    const button = event.currentTarget;
+    const modalId = button.dataset.modalTarget;
+    const modal = document.querySelector(modalId);
+    if (!modal) return;
+
+    const form = modal.querySelector('form');
+    const protocol = FORM_CONFIG[modalId.substring(1)];
+    const data = button.dataset.actionInfo ? JSON.parse(button.dataset.actionInfo) : button.dataset;
+
+    if (form && protocol) {
+        runProtocol({ form, data, protocol });
+    }
+
+    modal.classList.add('is-active');
+}
+
+/**
+ * Handles the submission of all modal forms. It uses the Fetch API to
+ * submit the form data via AJAX, preventing a full page reload. On a
+ * validation error, it preserves the user's input and displays the
+ * error messages dynamically.
+ * @param {Event} event - The form submission event.
+ */
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+
+    try {
+        const response = await fetch(form.action, {
+            method: form.method,
+            body: new FormData(form),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else if (response.status === 400) {
+            const errorData = await response.json();
+            displayFormErrors(form, errorData.errors);
+        } else {
+            console.error('An unexpected server error occurred:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Failed to submit form via AJAX:', error);
+    }
+}
 
 // =========================================================================
-// === 3. PROTOCOLS
+// === 3. UTILITIES: UI & FORM HELPERS
 // =========================================================================
 
-// --- A. For the "Location Type" Forms ---
+/**
+ * Renders validation errors inside the modal's form. It constructs an
+ * error summary and applies error styling to the relevant form fields.
+ * @param {HTMLFormElement} form - The form where errors will be displayed.
+ * @param {object} errors - An object of errors returned from the server.
+ */
+function displayFormErrors(form, errors) {
+    clearFormErrors(form);
+    const summaryContainer = form.querySelector('.form-error-summary-container');
+    if (!summaryContainer) return;
 
-const scrapeEditTypeDataFromForm = (form) => {
-  const formData = new FormData(form);
-  const allowedParents = formData.getAll('allowed_parents').map(Number);
-  return {
-    name: formData.get('name'),
-    icon: formData.get('icon'),
-    rows: formData.get('rows'),
-    columns: formData.get('columns'),
-    can_store_inventory: formData.has('can_store_inventory'),
-    can_store_samples: formData.has('can_store_samples'),
-    has_spaces: formData.has('has_spaces'),
-    allowed_parents: allowedParents,
-  };
-};
+    let errorListHtml = '<ul>';
+    for (const [field, messages] of Object.entries(errors)) {
+        const fieldElement = form.querySelector(`[name="${field}"]`);
+        fieldElement?.closest('.form-field')?.classList.add('has-error');
+        const label = fieldElement?.closest('.form-field')?.querySelector('label')?.textContent || field;
+        messages.forEach(msg => { errorListHtml += `<li>${label}: ${msg}</li>`; });
+    }
+    errorListHtml += '</ul>';
 
-const addTypeClear = (form) => {
-  uiUtils.clearFormFields(form);
-  uiUtils.clearFormErrors(form);
-  if (pageState.addTypeIconPicker) pageState.addTypeIconPicker.setChoiceByValue('warehouse');
-};
+    summaryContainer.innerHTML = `
+        <div class="form-error-summary">
+            <p>Please correct the following errors:</p>
+            ${errorListHtml}
+        </div>
+    `;
+}
 
-const addTypeConfigure = (form) => {
-    const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
-    const rowsInput = form.querySelector('input[name="rows"]');
-    const columnsInput = form.querySelector('input[name="columns"]');
-    const syncFields = () => {
+/** Clears all validation messages and error styling from a form. */
+function clearFormErrors(form) {
+    form.querySelector('.form-error-summary-container').innerHTML = '';
+    form.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
+}
+
+/** A generic onClear protocol step that resets a form and its errors. */
+function genericClear(form) {
+    clearFormErrors(form);
+    form.reset();
+    if (pageState.addTypeIconPicker) pageState.addTypeIconPicker.setChoiceByValue('warehouse');
+}
+
+// =========================================================================
+// === 4. PROTOCOL IMPLEMENTATIONS: FORM-SPECIFIC LOGIC
+// =========================================================================
+
+/** Configures the grid inputs for the 'Add/Edit Location Type' form. */
+function addTypeConfigure(form) {
+    const hasSpacesCheckbox = form.querySelector('[name="has_spaces"]');
+    const rowsInput = form.querySelector('[name="rows"]');
+    const columnsInput = form.querySelector('[name="columns"]');
+
+    const syncGridInputs = () => {
         const isChecked = hasSpacesCheckbox.checked;
         rowsInput.disabled = !isChecked;
         columnsInput.disabled = !isChecked;
         if (!isChecked) { rowsInput.value = ''; columnsInput.value = ''; }
     };
-    syncFields();
-    if (!hasSpacesCheckbox.dataset.listenerAttached) {
-        hasSpacesCheckbox.addEventListener('change', syncFields);
-        hasSpacesCheckbox.dataset.listenerAttached = 'true';
+    syncGridInputs();
+    hasSpacesCheckbox.addEventListener('change', syncGridInputs);
+}
+
+/** Populates the 'Edit Location Type' form with instance data. */
+function editTypePopulate(form, data) {
+    form.action = `/location_configuration/types/edit/${data.location_type_id}/`;
+    form.querySelector('[name="name"]').value = data.name;
+    form.querySelector('[name="can_store_inventory"]').checked = data.can_store_inventory;
+    form.querySelector('[name="can_store_samples"]').checked = data.can_store_samples;
+    form.querySelector('[name="has_spaces"]').checked = data.has_spaces;
+    form.querySelector('[name="rows"]').value = data.rows || '';
+    form.querySelector('[name="columns"]').value = data.columns || '';
+    if (pageState.editTypeIconPicker) {
+      pageState.editTypeIconPicker.setChoiceByValue(data.icon || 'warehouse');
     }
-};
-
-const editTypeClear = (form) => {
-    genericClear(form);
     form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
-        cb.disabled = false;
-        cb.closest('label').style.display = '';
+        cb.checked = data.allowed_parents.includes(parseInt(cb.value));
     });
-    const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
-    if (hasSpacesCheckbox) hasSpacesCheckbox.disabled = false;
-    const rowsInput = form.querySelector('input[name="rows"]');
-    if (rowsInput) rowsInput.disabled = true;
-    const columnsInput = form.querySelector('input[name="columns"]');
-    if (columnsInput) columnsInput.disabled = true;
-};
+}
 
-const editTypePopulate = (form, data) => {
-  form.querySelector('input[name="location_type_id"]').value = data.location_type_id;
-  form.querySelector('input[name="name"]').value = data.name;
-  form.querySelector('input[name="rows"]').value = data.rows || '';
-  form.querySelector('input[name="columns"]').value = data.columns || '';
-  form.querySelector('input[name="can_store_inventory"]').checked = data.can_store_inventory;
-  form.querySelector('input[name="can_store_samples"]').checked = data.can_store_samples;
-  form.querySelector('input[name="has_spaces"]').checked = data.has_spaces;
-  if (pageState.editTypeIconPicker) pageState.editTypeIconPicker.setChoiceByValue(data.icon || 'warehouse');
-  if (data.allowed_parents) {
-    form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => cb.checked = false);
-    data.allowed_parents.forEach(id => {
-      const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
-      if (cb) cb.checked = true;
-    });
-  }
-};
-
-const editTypeConfigure = (form, data) => {
-    form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
-        cb.disabled = false;
-        cb.closest('label').style.display = '';
-    });
-    if (data.invalid_parent_ids) data.invalid_parent_ids.forEach(id => {
-        const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
-        if (cb) cb.closest('label').style.display = 'none';
-    });
-    if (data.in_use_parent_type_ids) data.in_use_parent_type_ids.forEach(id => {
-        const cb = form.querySelector(`input[name="allowed_parents"][value="${id}"]`);
-        if (cb) cb.disabled = true;
-    });
+/** Configures fields in the 'Edit Location Type' form based on its state. */
+function editTypeConfigure(form, data) {
+    addTypeConfigure(form); // Re-use the same grid logic
     const isInUse = data['is-in-use'];
-    const hasSpacesCheckbox = form.querySelector('input[name="has_spaces"]');
-    const rowsInput = form.querySelector('input[name="rows"]');
-    const columnsInput = form.querySelector('input[name="columns"]');
-    const syncEditFields = () => {
-        const isChecked = hasSpacesCheckbox.checked;
-        rowsInput.disabled = isInUse || !isChecked;
-        columnsInput.disabled = isInUse || !isChecked;
-        if (!isChecked) { rowsInput.value = ''; columnsInput.value = ''; }
-    };
-    hasSpacesCheckbox.disabled = isInUse;
-    syncEditFields();
-    if (!hasSpacesCheckbox.dataset.listenerAttached) {
-        hasSpacesCheckbox.addEventListener('change', syncEditFields);
-        hasSpacesCheckbox.dataset.listenerAttached = 'true';
-    }
-};
+    form.querySelector('[name="has_spaces"]').disabled = isInUse;
+    form.querySelector('[name="rows"]').disabled = isInUse;
+    form.querySelector('[name="columns"]').disabled = isInUse;
 
-// --- B. For the "Location" Forms ---
+    form.querySelectorAll('input[name="allowed_parents"]').forEach(cb => {
+        const id = parseInt(cb.value);
+        cb.disabled = data.invalid_parent_ids.includes(id) || data.in_use_parent_type_ids.includes(id);
+    });
+}
 
-const addChildPopulate = async (form, data) => {
-  const { parentId, parentName } = data;
-  form.querySelector('#parent-location-name-title').textContent = parentName;
-  form.querySelector('#parent-location-id').value = parentId;
-  form.querySelector('#parent-location-name-display').value = parentName;
-  const select = form.querySelector('select[name="location_type"]');
-  try {
-    const response = await fetch(`/location_configuration/get-child-types/${parentId}/`);
+/** Populates the 'Add Child Location' form, fetching valid child types. */
+async function addChildPopulate(form, data) {
+    form.action = `/location_configuration/locations/add-child/`;
+    form.querySelector('#parent-location-name-title').textContent = data.parentName;
+    form.querySelector('[name="parent"]').value = data.parentId;
+    form.querySelector('#parent-location-name-display').value = data.parentName;
+
+    const select = form.querySelector('select[name="location_type"]');
+    const response = await fetch(`/location_configuration/get-child-types/${data.parentId}/`);
     const childTypes = await response.json();
     select.innerHTML = '<option value="">Select a location type</option>';
     childTypes.forEach(type => select.add(new Option(type.name, type.id)));
-  } catch (error) {
-    select.innerHTML = '<option>Could not load types</option>';
-    console.error('Failed to fetch child location types:', error);
-  }
-};
+}
 
-const editLocationPopulate = async (form, data) => {
-  const { locationId } = data;
-  try {
-    const response = await fetch(`/location_configuration/get-location-details/${locationId}/`);
+/** Populates the 'Edit Location' form with details fetched from the server. */
+async function editLocationPopulate(form, data) {
+    form.action = `/location_configuration/locations/edit/${data.locationId}/`;
+    const response = await fetch(`/location_configuration/get-location-details/${data.locationId}/`);
     const details = await response.json();
     form.dataset.hasChildren = details.has_children;
-    form.querySelector('input[name="name"]').value = details.name;
-    form.querySelector('input[name="location_id"]').value = locationId;
+    form.querySelector('[name="name"]').value = details.name;
+
     const select = form.querySelector('select[name="location_type"]');
     select.innerHTML = '';
     details.valid_location_types.forEach(type => select.add(new Option(type.name, type.id)));
     select.value = details.current_location_type_id;
-  } catch (error) { console.error("Error populating edit location form:", error); }
-};
-
-const editLocationConfigure = (form) => {
-  const hasChildren = form.dataset.hasChildren === 'true';
-  const select = form.querySelector('select[name="location_type"]');
-  if (select) select.disabled = hasChildren;
-};
-
-const configureEditLocationErrorForm = (form, data) => runProtocol({ form, data, protocol: FORM_CONFIG[form.closest('.modal-overlay').id].error });
-
-
-// --- C. Generic & Reusable Strategies ---
-
-const genericClear = (form) => {
-  uiUtils.clearFormFields(form);
-  uiUtils.clearFormErrors(form);
-};
-
-
-// =========================================================================
-// === 4. EVENT HANDLERS (Driven by the Switchboard & Protocol Engine)
-// =========================================================================
-
-function handleFormModalTriggerClick(event) {
-  event.preventDefault();
-  const button = this;
-  const modalId = button.dataset.modalTarget.substring(1);
-  const modal = document.getElementById(modalId);
-  if (!modal) return;
-  const formConfig = FORM_CONFIG[modalId];
-  if (!formConfig || !formConfig.normal) return;
-
-  const form = modal.querySelector('form');
-  const data = button.dataset.actionInfo ? JSON.parse(button.dataset.actionInfo) : button.dataset;
-
-  runProtocol({ form, data, protocol: formConfig.normal });
-  modal.classList.add('is-active');
 }
 
-function handleFormErrorTrigger() {
-  document.querySelectorAll('.modal-overlay[data-is-open-on-load]').forEach(modal => {
-    const formConfig = FORM_CONFIG[modal.id];
-    if (formConfig && formConfig.error) {
-      const form = modal.querySelector('form');
-      const data = modal.dataset.actionInfo ? JSON.parse(modal.dataset.actionInfo) : null;
-      runProtocol({ form, data, protocol: formConfig.error });
-    }
-  });
+/** Configures the 'Edit Location' form, disabling the type if it has children. */
+function editLocationConfigure(form) {
+    const hasChildren = form.dataset.hasChildren === 'true';
+    form.querySelector('select[name="location_type"]').disabled = hasChildren;
 }
 
 // =========================================================================
-// === 5. INITIALIZERS
+// === 5. INITIALIZATION
 // =========================================================================
 
+/** Returns the template functions for rendering icons in Choices.js. */
 const getIconPickerTemplates = (template) => {
-  const renderIcon = (data) => `<span class="material-symbols-outlined">${data.value}</span>`;
-  return {
-    item: (classNames, data) => template(`<div class="${classNames.item}" data-item data-id="${data.id}" data-value="${data.value}">${renderIcon(data)}</div>`),
-    choice: (classNames, data) => template(`<div class="${classNames.item} ${classNames.itemChoice}" data-choice data-id="${data.id}" data-value="${data.value}">${renderIcon(data)}</div>`),
-  };
+    const renderIcon = (data) => `<span class="material-symbols-outlined">${data.value}</span>`;
+    return {
+        item: (classNames, data) => template(`<div class="${classNames.item}" data-item data-id="${data.id}" data-value="${data.value}">${renderIcon(data)}</div>`),
+        choice: (classNames, data) => template(`<div class="${classNames.item} ${classNames.itemChoice}" data-choice data-id="${data.id}" data-value="${data.value}">${renderIcon(data)}</div>`),
+    };
 };
 
-const initAddIconPicker = () => {
-  const el = document.querySelector('#add-type-modal .js-choice-icon-picker');
-  if (el) pageState.addTypeIconPicker = new Choices(el, { searchEnabled: false, itemSelectText: '', callbackOnCreateTemplates: getIconPickerTemplates });
+/** Initializes the Choices.js icon picker plugins for the modals. */
+const initIconPickers = () => {
+    const addEl = document.querySelector('#add-type-modal .js-choice-icon-picker');
+    if (addEl) pageState.addTypeIconPicker = new Choices(addEl, { searchEnabled: false, itemSelectText: '', callbackOnCreateTemplates: getIconPickerTemplates });
+
+    const editEl = document.querySelector('#edit-type-modal .js-choice-icon-picker');
+    if (editEl) pageState.editTypeIconPicker = new Choices(editEl, { searchEnabled: false, itemSelectText: '', callbackOnCreateTemplates: getIconPickerTemplates });
 };
 
-const initEditIconPicker = () => {
-  const el = document.querySelector('#edit-type-modal .js-choice-icon-picker');
-  if (el) pageState.editTypeIconPicker = new Choices(el, { searchEnabled: false, itemSelectText: '', callbackOnCreateTemplates: getIconPickerTemplates });
+/** Attaches all necessary event listeners on page load. */
+const initEventListeners = () => {
+    // Attach listener to modal trigger buttons
+    document.querySelectorAll('button[data-modal-target]').forEach(button => {
+        if (button.dataset.modalTarget !== '#delete-confirmation-modal') {
+            button.addEventListener('click', handleModalTriggerClick);
+        }
+    });
+    // Attach listener to all modal forms for AJAX submission
+    document.querySelectorAll('.modal-content form').forEach(form => {
+        form.addEventListener('submit', handleFormSubmit);
+    });
 };
 
-const initFormModalTriggers = () => {
-  document.querySelectorAll('button[data-modal-target]:not([data-modal-target="#delete-confirmation-modal"])').forEach(button => {
-    button.addEventListener('click', handleFormModalTriggerClick);
-  });
-};
-
-// =========================================================================
-// === 6. MAIN EXECUTION
-// =========================================================================
-
+/** The main entry point for the script, executed after the DOM is loaded. */
 document.addEventListener("DOMContentLoaded", () => {
-  initProtocol([
-    initAddIconPicker,
-    initEditIconPicker,
-    initFormModalTriggers
-  ]);
-
-  handleFormErrorTrigger();
+    initIconPickers();
+    initEventListeners();
 });

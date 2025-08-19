@@ -289,10 +289,9 @@ async function addChildPopulate(form, data) {
 
     // 2. Populate the static and hidden fields in the form.
     form.action = `/location_configuration/locations/add-child/`;
-    form.querySelector('#parent-location-name-title').textContent = data.parentName;
     form.querySelector('[name="parent"]').value = data.parentId;
     form.querySelector('[name="parent_name"]').value = data.parentName;
-
+    
     const select = form.querySelector('select[name="location_type"]');
     if (!select) {
         console.error("Add Child Modal: Could not find the location_type select element in the form.");

@@ -220,7 +220,7 @@ class AddChildLocationForm(BaseLocationForm):
 
         # Configure the parent fields for display and submission.
         self.fields['parent'].widget = forms.HiddenInput()
-        self.fields['parent_name'].widget.attrs['disabled'] = True
+        self.fields['parent_name'].widget.attrs['readonly'] = True
         if parent:
             self.fields['parent_name'].initial = parent.name
             # The queryset for location_type depends on the parent.
@@ -240,37 +240,32 @@ class EditLocationForm(BaseLocationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Only run this logic if the form is bound to a real, saved instance.
+        self.fields['parent'].widget = forms.HiddenInput()
+
+        self.fields['parent_name'].widget.attrs['readonly'] = True
+        
+        # Only run instance-specific logic if the form is bound to a saved object.
         if self.instance and self.instance.pk:
             location = self.instance
 
-            # The parent field is hidden; its value comes from the instance.
-            self.fields['parent'].widget = forms.HiddenInput()
-            
-            # Configure the location_type field.
+            # Disable changing the type if the location has children.
             if location.children.exists():
                 self.fields['location_type'].disabled = True
                 self.fields['location_type'].help_text = "This location has children, so its type cannot be changed."
 
-            # Configure the parent_name display field.
+            # Set the initial data for the form fields.
             if location.parent:
-                self.fields['parent_name'].widget.attrs['disabled'] = True
                 self.fields['parent_name'].initial = location.parent.name
-                # Set the valid location types based on the actual parent.
                 self.fields['location_type'].queryset = location.parent.location_type.allowed_children.all()
             else:
-                # If it's a top-level location, we don't need parent fields.
-                if 'parent' in self.fields:
-                    del self.fields['parent']
-                if 'parent_name' in self.fields:
-                    del self.fields['parent_name']
-                # Set valid types for top-level locations.
+                # If it's a top-level location, set the valid types accordingly.
+                # The JavaScript will handle hiding the parent_name field.
                 self.fields['location_type'].queryset = LocationType.objects.filter(
                     allowed_parents__isnull=True
                 )
 
     def clean_location_type(self):
         """A safeguard to prevent changing the type if the field is disabled."""
-        if self.fields['location_type'].disabled:
+        if self.fields.get('location_type') and self.fields['location_type'].disabled:
             return self.instance.location_type
         return self.cleaned_data.get('location_type')

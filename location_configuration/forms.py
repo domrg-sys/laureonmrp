@@ -146,16 +146,12 @@ class LocationTypeForm(forms.ModelForm):
 
 
 class LocationForm(forms.ModelForm):
-    parent_name = forms.CharField(
-        required=False,
-        label="Parent Location",
-        widget=forms.TextInput(attrs={'disabled': True})
-    )
+    # The parent_name CharField definition is removed.
 
     class Meta:
         model = Location
-        # Add parent_name to the fields list
-        fields = ['name', 'location_type', 'parent', 'parent_name']
+        # Removed parent_name from the fields list
+        fields = ['name', 'location_type', 'parent']
 
     def __init__(self, *args, **kwargs):
         form_type = kwargs.pop('form_type', None)
@@ -171,24 +167,25 @@ class LocationForm(forms.ModelForm):
         self.fields['parent'].widget = forms.HiddenInput()
         
         # Case 1: Adding a new top-level location.
-        if not is_editing and not is_add_child:
+        if not is_editing and form_type is None:
             del self.fields['parent']
-            del self.fields['parent_name']
             self._filter_location_type_choices()
 
         # Case 2: Adding a new child location.
         elif is_add_child:
-            self.fields['location_type'].queryset = LocationType.objects.none()
+            # When adding a child, the parent is known (set via 'initial' in the view).
+            # We must filter location types based on the parent.
+            self._filter_location_type_choices()
 
         # Case 3: Editing an existing location.
         elif is_editing:
             if self.instance.parent:
-                # If editing a child, populate the parent name display from the instance.
-                self.initial['parent_name'] = self.instance.parent.name
+                # If editing a child, the hidden parent field is populated automatically from the instance.
+                pass
             else:
                 # If editing a top-level location, it has no parent.
                 del self.fields['parent']
-                del self.fields['parent_name']
+            
             self._filter_location_type_choices()
 
         elif form_type == 'edit_placeholder':
@@ -199,11 +196,22 @@ class LocationForm(forms.ModelForm):
     def _filter_location_type_choices(self):
         # Determines the correct queryset for the 'location_type' field based
         # on whether the location is a top-level location or a child.
-        parent_id = self.data.get('parent') if 'parent' in self.data else self.initial.get('parent')
+        
+        # Determine the parent ID robustly: Check bound data (POST), then initial data (GET).
+        parent_id = self.data.get('parent') if self.is_bound else self.initial.get('parent')
+
+        # Fallback to the instance's parent if editing and no ID found yet.
+        if not parent_id and self.instance and self.instance.pk:
+            parent_id = self.instance.parent_id
+
+        # Ensure parent_id is an ID, not an object (common when using 'initial').
+        if hasattr(parent_id, 'pk'):
+            parent_id = parent_id.pk
         
         if parent_id:
             try:
-                parent_location = Location.objects.get(pk=parent_id)
+                # Optimized: Use select_related to fetch the parent and its type efficiently.
+                parent_location = Location.objects.select_related('location_type').get(pk=parent_id)
                 self.fields['location_type'].queryset = parent_location.location_type.allowed_children.all()
             except (Location.DoesNotExist, ValueError, TypeError):
                 self.fields['location_type'].queryset = LocationType.objects.none()

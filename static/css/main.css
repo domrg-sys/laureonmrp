@@ -454,7 +454,8 @@ body {
     box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.3);
 }
 
-.form-field input:disabled {
+.form-field input:disabled,
+.form-field input:read-only {
     background-color: var(--color-gray-1);
     cursor: not-allowed;
     color: var(--color-gray-3);

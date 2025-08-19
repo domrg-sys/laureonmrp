@@ -35,7 +35,7 @@ const FORM_CONFIG = {
     onClear: genericClear,
   },
   'add-child-location-modal': {
-    onClear: genericClear,
+    onClear: addChildClear,
     onPopulate: addChildPopulate,
   },
   'edit-location-modal': {
@@ -265,6 +265,18 @@ function editTypeConfigure(form, data) {
             cb.disabled = true;
         }
     });
+}
+
+/** A custom onClear step for the Add Child form that avoids a full reset. */
+function addChildClear(form) {
+    clearFormErrors(form);
+    // Manually clear only the fields that the user interacts with,
+    // leaving the parent_name field alone so it can be populated.
+    form.querySelector('[name="name"]').value = '';
+    const locationTypeSelect = form.querySelector('[name="location_type"]');
+    if (locationTypeSelect) {
+        locationTypeSelect.innerHTML = ''; // Clear old options
+    }
 }
 
 /** Populates the 'Add Child Location' form, fetching valid child types. */

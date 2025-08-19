@@ -86,7 +86,7 @@ class Location(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} ({self.location_type.name})"
+        return self.name
     
     def clean(self):
         # This method is Django's hook for model-level validation. It ensures

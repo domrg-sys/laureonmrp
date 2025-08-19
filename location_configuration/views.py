@@ -20,7 +20,7 @@ from django.utils.safestring import mark_safe
 from django.views.generic import TemplateView
 from django.views import View
 
-from .forms import LocationForm, LocationTypeForm
+from .forms import AddLocationTypeForm, EditLocationTypeForm, AddTopLevelLocationForm, AddChildLocationForm, EditLocationForm
 from .models import Location, LocationType
 
 # =========================================================================
@@ -50,9 +50,12 @@ class LocationsTabView(PermissionRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('locations'))
-        context['add_location_form'] = LocationForm()
-        context['add_child_form'] = LocationForm(form_type='add_child')
-        context['edit_location_form'] = LocationForm(form_type='edit_placeholder')
+        
+        # Use the new, specialized forms. Their names clearly state their purpose.
+        context['add_location_form'] = AddTopLevelLocationForm()
+        context['add_child_form'] = AddChildLocationForm()
+        context['edit_location_form'] = EditLocationForm() # This form is just a placeholder here
+        
         context['top_level_locations'] = Location.objects.filter(parent__isnull=True)
         context['can_delete_location'] = self.request.user.has_perm('location_configuration.delete_location')
         return context
@@ -66,8 +69,10 @@ class LocationTypesTabView(PermissionRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(_prepare_tabs_context('types'))
-        context['add_form'] = LocationTypeForm()
-        context['edit_form'] = LocationTypeForm()
+        
+        context['add_form'] = AddLocationTypeForm()
+        context['edit_form'] = EditLocationTypeForm() # This is a placeholder for the modal
+
         context['table_headers'] = [
             'Name', 'Icon', 'Allowed Parents', 'Stores Inventory',
             'Stores Samples', 'Has Spaces', 'Grid', 'Actions'
@@ -104,8 +109,6 @@ class LocationTypesTabView(PermissionRequiredMixin, TemplateView):
                 if in_degree[child.id] == 0:
                     queue.append(child.id)
         
-        # If the sorted list doesn't contain all types, there's a cycle.
-        # This fallback ensures all types are still displayed.
         if len(sorted_list) != len(all_types):
             sorted_ids = {t.id for t in sorted_list}
             remaining = sorted([t for t in all_types if t.id not in sorted_ids], key=lambda t: t.name)
@@ -181,11 +184,13 @@ class AddLocationTypeView(PermissionRequiredMixin, View):
     permission_required = 'location_configuration.add_locationtype'
     
     def post(self, request, *args, **kwargs):
-        form = LocationTypeForm(request.POST)
+        # Use the simple, focused form for adding.
+        form = AddLocationTypeForm(request.POST)
         if form.is_valid():
             form.save()
             return JsonResponse({'status': 'success'})
         return JsonResponse({'errors': form.errors}, status=400)
+
 
 class EditLocationTypeView(PermissionRequiredMixin, View):
     """Handles the AJAX submission for editing an existing LocationType."""
@@ -193,7 +198,8 @@ class EditLocationTypeView(PermissionRequiredMixin, View):
     
     def post(self, request, pk, *args, **kwargs):
         instance = get_object_or_404(LocationType, pk=pk)
-        form = LocationTypeForm(request.POST, instance=instance)
+        # Use the specialized form for editing.
+        form = EditLocationTypeForm(request.POST, instance=instance)
         if form.is_valid():
             form.save()
             return JsonResponse({'status': 'success'})
@@ -204,7 +210,18 @@ class AddLocationView(PermissionRequiredMixin, View):
     permission_required = 'location_configuration.add_location'
     
     def post(self, request, *args, **kwargs):
-        form = LocationForm(request.POST)
+        # Check if the submission is for a child or a top-level location.
+        is_child_form = 'add-child' in request.path
+        
+        if is_child_form:
+            # When adding a child, the parent object is needed for the form.
+            parent_id = request.POST.get('parent')
+            parent = get_object_or_404(Location, pk=parent_id)
+            # Pass the parent instance in the 'initial' data.
+            form = AddChildLocationForm(request.POST, initial={'parent': parent})
+        else:
+            form = AddTopLevelLocationForm(request.POST)
+
         if form.is_valid():
             form.save()
             return JsonResponse({'status': 'success'})
@@ -216,7 +233,9 @@ class EditLocationView(PermissionRequiredMixin, View):
     
     def post(self, request, pk, *args, **kwargs):
         instance = get_object_or_404(Location, pk=pk)
-        form = LocationForm(request.POST, instance=instance)
+        # Simply swap the old form class with the new, specialized one.
+        form = EditLocationForm(request.POST, instance=instance)
+        
         if form.is_valid():
             form.save()
             return JsonResponse({'status': 'success'})

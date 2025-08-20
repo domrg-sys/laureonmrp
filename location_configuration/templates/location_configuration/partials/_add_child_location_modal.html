@@ -11,11 +11,15 @@
         <div class="modal-body">
             <form id="add-child-location-form" action="{% url 'location_configuration:add_child_location' %}" method="post" novalidate>
                 {% csrf_token %}
-                {{ form.parent }} {# This renders the hidden input for the parent ID #}
+                {{ form.parent }} {# Hidden input for parent ID #}
+                {{ form.row }}    {# Hidden input for grid row #}
+                {{ form.column }} {# Hidden input for grid column #}
 
                 <div class="form-error-summary-container"></div>
 
                 {% render_field form.parent_name %}
+                
+                <div id="location-grid-container" class="location-grid-container"></div>
 
                 {% render_field form.name %}
                 {% render_field form.location_type %}

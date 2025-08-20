@@ -21,6 +21,7 @@ urlpatterns = [
     # --- API-like URLs for fetching data (GET) ---
     path('get-child-types/<int:parent_id>/', views.get_child_location_types, name='get_child_location_types'),
     path('get-location-details/<int:location_id>/', views.get_location_details, name='get_location_details'),
+    path('get-location-grid/<int:location_id>/', views.get_location_grid, name='get_location_grid'),
 
     # --- Form submission URLs (POST) ---
     path('types/add/', views.AddLocationTypeView.as_view(), name='add_location_type'),

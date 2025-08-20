@@ -1,5 +1,5 @@
 from django import forms
-from .models import LocationType, Location
+from .models import LocationType, Location, LocationSpace
 
 # =========================================================================
 # === CUSTOM WIDGETS
@@ -208,13 +208,13 @@ class AddTopLevelLocationForm(BaseLocationForm):
 class AddChildLocationForm(BaseLocationForm):
     """A form for adding a new location as a child of another."""
     parent_name = forms.CharField(label="Parent Location", required=False)
+    row = forms.IntegerField(widget=forms.HiddenInput(), required=False)
+    column = forms.IntegerField(widget=forms.HiddenInput(), required=False)
 
     class Meta(BaseLocationForm.Meta):
-        # We need all three fields for this form's logic.
-        fields = ['name', 'location_type', 'parent', 'parent_name']
+        fields = ['name', 'location_type', 'parent', 'parent_name', 'row', 'column'] # Add row and column here
 
     def __init__(self, *args, **kwargs):
-        # The parent is passed in as an initial value from the view.
         parent = kwargs.get('initial', {}).get('parent')
         super().__init__(*args, **kwargs)
 
@@ -230,42 +230,76 @@ class AddChildLocationForm(BaseLocationForm):
             self.fields['location_type'].queryset = LocationType.objects.none()
 
 
+    def save(self, commit=True):
+        # Override the save method to handle creating the LocationSpace
+        location = super().save(commit=False)
+        parent = self.cleaned_data.get('parent')
+        row = self.cleaned_data.get('row')
+        column = self.cleaned_data.get('column')
+
+        if parent.location_type.has_spaces and row and column:
+            # If the parent has spaces and we got coordinates,
+            # create or update the LocationSpace.
+            space, created = LocationSpace.objects.get_or_create(
+                parent_location=parent,
+                row=row,
+                column=column
+            )
+            if commit:
+                location.save()
+                space.child_location = location
+                space.save()
+        elif commit:
+            location.save()
+
+        return location
+
+
 class EditLocationForm(BaseLocationForm):
-    """A form for editing an existing location."""
     parent_name = forms.CharField(label="Parent Location", required=False)
+    space_info = forms.CharField(label="Position in Parent", required=False)
 
     class Meta(BaseLocationForm.Meta):
-        fields = ['name', 'location_type', 'parent', 'parent_name']
+        fields = ['name', 'location_type', 'parent', 'parent_name','space_info']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.fields['parent'].widget = forms.HiddenInput()
-
         self.fields['parent_name'].widget.attrs['readonly'] = True
+        self.fields['space_info'].widget.attrs['readonly'] = True
         
-        # Only run instance-specific logic if the form is bound to a saved object.
         if self.instance and self.instance.pk:
             location = self.instance
 
-            # Disable changing the type if the location has children.
             if location.children.exists():
                 self.fields['location_type'].disabled = True
                 self.fields['location_type'].help_text = "This location has children, so its type cannot be changed."
 
-            # Set the initial data for the form fields.
-            if location.parent:
-                self.fields['parent_name'].initial = location.parent.name
-                self.fields['location_type'].queryset = location.parent.location_type.allowed_children.all()
+            parent = location.parent
+            if parent:
+                self.fields['parent_name'].initial = parent.name
+                self.fields['location_type'].queryset = parent.location_type.allowed_children.all()
             else:
-                # If it's a top-level location, set the valid types accordingly.
-                # The JavaScript will handle hiding the parent_name field.
                 self.fields['location_type'].queryset = LocationType.objects.filter(
                     allowed_parents__isnull=True
                 )
 
-    def clean_location_type(self):
-        """A safeguard to prevent changing the type if the field is disabled."""
-        if self.fields.get('location_type') and self.fields['location_type'].disabled:
-            return self.instance.location_type
-        return self.cleaned_data.get('location_type')
+    def clean(self):
+        cleaned_data = super().clean()
+        location_type = cleaned_data.get("location_type")
+
+        if self.fields['location_type'].disabled:
+            cleaned_data['location_type'] = self.instance.location_type
+            return cleaned_data
+
+        parent = cleaned_data.get("parent")
+
+        if location_type and parent:
+            if not parent.location_type.allowed_children.filter(pk=location_type.pk).exists():
+                self.add_error('location_type', f"'{location_type}' is not a valid type for a child of '{parent}'.")
+        elif location_type and not parent:
+             if location_type.allowed_parents.exists():
+                 self.add_error('location_type', f"'{location_type}' cannot be a top-level location.")
+
+        return cleaned_data

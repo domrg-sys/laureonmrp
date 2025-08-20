@@ -260,20 +260,63 @@ def get_location_details(request, location_id):
     Returns a JSON object with the data needed to populate the
     'Edit Location' modal form.
     """
-    location = get_object_or_404(Location, pk=location_id)
-    
-    parent_name = None  # Default to None
+    location = get_object_or_404(Location, pk=location_id, select_related='occupied_space')
+
+    space_info = None
+    if hasattr(location, 'occupied_space') and location.occupied_space:
+        space = location.occupied_space
+        space_info = f"R{space.row}, C{space.column}"
+
+    parent_name = None
+    parent_id = None
     if location.parent:
         valid_location_types = location.parent.location_type.allowed_children.all()
-        parent_name = location.parent.name  # Get the parent's name
+        parent_name = location.parent.name
+        parent_id = location.parent.pk
     else:
         valid_location_types = LocationType.objects.filter(allowed_parents__isnull=True)
-        
+
     data = {
         'name': location.name,
-        'parent_name': parent_name,  # Add parent_name to the response
+        'parent_name': parent_name,
+        'parent_id': parent_id,
+        'space_info': space_info, # Add this line
         'current_location_type_id': location.location_type.id,
         'valid_location_types': [{'id': lt.id, 'name': lt.name} for lt in valid_location_types],
         'has_children': location.children.exists()
+    }
+    return JsonResponse(data)
+
+def get_location_grid(request, location_id):
+    """
+    Returns a JSON object with the grid layout for a location that has spaces.
+    """
+    location = get_object_or_404(Location, pk=location_id)
+    if not location.location_type.has_spaces:
+        return JsonResponse({'has_spaces': False})
+
+    occupied_spaces = {
+        (space.row, space.column): space.child_location.name
+        for space in location.spaces.filter(child_location__isnull=False)
+    }
+
+    grid = []
+    for r in range(1, location.location_type.rows + 1):
+        row = []
+        for c in range(1, location.location_type.columns + 1):
+            cell_data = {
+                'row': r,
+                'column': c,
+                'is_occupied': (r, c) in occupied_spaces,
+                'occupant_name': occupied_spaces.get((r, c), None)
+            }
+            row.append(cell_data)
+        grid.append(row)
+
+    data = {
+        'has_spaces': True,
+        'rows': location.location_type.rows,
+        'columns': location.location_type.columns,
+        'grid': grid
     }
     return JsonResponse(data)

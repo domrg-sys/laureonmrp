@@ -279,9 +279,11 @@ function addChildClear(form) {
     }
 }
 
-/** Populates the 'Add Child Location' form, fetching valid child types. */
+/**
+ * Populates the 'Add Child Location' form, including the grid and dropdown.
+ */
 async function addChildPopulate(form, data) {
-    // 1. Verify that the necessary data from the button's data attributes is present.
+    // 1. Verify that the necessary data is present.
     if (!data.parentId || !data.parentName) {
         console.error("Add Child Modal: Missing parentId or parentName from the trigger button.", data);
         return;
@@ -299,35 +301,85 @@ async function addChildPopulate(form, data) {
     }
 
     try {
-        // 3. Fetch the list of valid child types from the server.
-        const response = await fetch(`/location_configuration/get-child-types/${data.parentId}/`);
-        if (!response.ok) {
-            console.error("Failed to fetch child types. Server responded with status:", response.status);
-            return;
-        }
-        const childTypes = await response.json();
+        // 3. Populate the location grid and the dropdown concurrently.
+        await Promise.all([
+            populateLocationGrid(form, data.parentId),
+            (async () => {
+                const response = await fetch(`/location_configuration/get-child-types/${data.parentId}/`);
+                if (!response.ok) {
+                    console.error("Failed to fetch child types. Server responded with status:", response.status);
+                    return;
+                }
+                const childTypes = await response.json();
 
-        // 4. Build the dropdown options using a robust method.
-        // Clear any existing options first.
-        select.innerHTML = '';
+                // 4. Build the dropdown options.
+                select.innerHTML = ''; // Clear existing options
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'Select a location type';
+                select.appendChild(placeholder);
 
-        // Add a default, placeholder option.
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = 'Select a location type';
-        select.appendChild(placeholder);
-
-        // Create and add an option for each valid child type returned by the server.
-        childTypes.forEach(type => {
-            const option = document.createElement('option');
-            option.value = type.id;
-            option.textContent = type.name;
-            select.appendChild(option);
-        });
+                childTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type.id;
+                    option.textContent = type.name;
+                    select.appendChild(option);
+                });
+            })()
+        ]);
 
     } catch (error) {
-        console.error("An error occurred while fetching or populating child location types:", error);
+        console.error("An error occurred while populating the add child modal:", error);
     }
+}
+
+/**
+ * Fetches data for and renders the location grid if the parent has spaces.
+ */
+async function populateLocationGrid(form, parentId) {
+    const gridContainer = form.querySelector('#location-grid-container');
+    gridContainer.style.display = 'none'; // Hide and clear by default
+    gridContainer.innerHTML = '';
+
+    const response = await fetch(`/location_configuration/get-location-grid/${parentId}/`);
+    const gridData = await response.json();
+
+    if (!gridData.has_spaces) return; // Exit if the parent doesn't have a grid
+
+    // Create and display the grid
+    gridContainer.style.display = 'block';
+    const gridEl = document.createElement('div');
+    gridEl.className = 'location-grid';
+    gridEl.style.gridTemplateColumns = `repeat(${gridData.columns}, 1fr)`;
+
+    gridData.grid.flat().forEach(cell => {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'location-grid-cell';
+        if (cell.is_occupied) {
+            cellEl.classList.add('is-occupied');
+            cellEl.textContent = cell.occupant_name;
+            cellEl.title = `Occupied by: ${cell.occupant_name}`;
+        } else {
+            cellEl.textContent = `R${cell.row} C${cell.column}`;
+            cellEl.dataset.row = cell.row;
+            cellEl.dataset.column = cell.column;
+        }
+        gridEl.appendChild(cellEl);
+    });
+    
+    // Add a single event listener to the grid container
+    gridEl.addEventListener('click', (e) => {
+        const clickedCell = e.target.closest('.location-grid-cell');
+        if (!clickedCell || clickedCell.classList.contains('is-occupied')) return;
+
+        gridEl.querySelector('.is-selected')?.classList.remove('is-selected');
+        clickedCell.classList.add('is-selected');
+        
+        form.querySelector('input[name="row"]').value = clickedCell.dataset.row;
+        form.querySelector('input[name="column"]').value = clickedCell.dataset.column;
+    });
+
+    gridContainer.appendChild(gridEl);
 }
 
 /** A custom onClear step for the edit location form. */
@@ -348,18 +400,32 @@ async function editLocationPopulate(form, data) {
     form.dataset.hasChildren = details.has_children;
     form.querySelector('[name="name"]').value = details.name;
 
+    const parentInput = form.querySelector('[name="parent"]');
+    if (parentInput) {
+        parentInput.value = details.parent_id || '';
+    }
+
     const parentNameField = form.querySelector('[name="parent_name"]');
-    // We also find the entire container for the field, which includes its label.
     const parentNameContainer = parentNameField ? parentNameField.closest('.form-field') : null;
 
     if (parentNameContainer) {
         if (details.parent_name) {
-            // If there is a parent, show the container and set the value.
             parentNameContainer.style.display = '';
             parentNameField.value = details.parent_name;
         } else {
-            // If there is NO parent, hide the entire field container.
             parentNameContainer.style.display = 'none';
+        }
+    }
+
+    const spaceInfoField = form.querySelector('[name="space_info"]');
+    const spaceInfoContainer = spaceInfoField ? spaceInfoField.closest('.form-field') : null;
+
+    if (spaceInfoContainer) {
+        if (details.space_info) {
+            spaceInfoContainer.style.display = '';
+            spaceInfoField.value = details.space_info;
+        } else {
+            spaceInfoContainer.style.display = 'none';
         }
     }
 

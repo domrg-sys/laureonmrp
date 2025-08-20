@@ -12,7 +12,7 @@ const pageState = {
 };
 
 // =========================================================================
-// === 1. ARCHITECTURE: SWITCHBOARD & PROTOCOL ENGINE
+// === 1. ARCHITECTURE & CORE LOGIC
 // =========================================================================
 
 /**
@@ -63,7 +63,7 @@ async function runProtocol({ form, data, protocol }) {
 }
 
 // =========================================================================
-// === 2. CORE LOGIC: EVENT HANDLERS
+// === 2. EVENT HANDLERS
 // =========================================================================
 
 /**
@@ -120,8 +120,28 @@ async function handleFormSubmit(event) {
     }
 }
 
+/**
+ * Handles the click event for a location node toggle button.
+ * @param {Event} event - The click event.
+ */
+function handleLocationNodeToggle(event) {
+    const button = event.currentTarget;
+    const childrenContainer = button.closest('.location-node').querySelector('.location-node-children');
+
+    if (!childrenContainer) return;
+
+    // Toggle the class that hides/shows the children container.
+    const isCollapsed = childrenContainer.classList.toggle('is-collapsed');
+
+    // Also toggle a class on the button itself for styling.
+    button.classList.toggle('is-expanded', !isCollapsed);
+
+    // If it's collapsed, use the right arrow. If it's open, use the down arrow.
+    button.querySelector('.material-symbols-outlined').textContent = isCollapsed ? 'chevron_right' : 'expand_more';
+}
+
 // =========================================================================
-// === 3. UTILITIES: UI & FORM HELPERS
+// === 3. UI & DOM UTILITIES
 // =========================================================================
 
 /**
@@ -162,6 +182,87 @@ function clearFormErrors(form) {
     form.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
 }
 
+/**
+ * Fetches data for and renders the location grid if the parent has spaces.
+ */
+async function populateLocationGrid(form, parentId) {
+    const gridContainer = form.querySelector('#location-grid-container');
+    gridContainer.style.display = 'none'; // Hide and clear by default
+    gridContainer.innerHTML = '';
+
+    const response = await fetch(`/location_configuration/get-location-grid/${parentId}/`);
+    const gridData = await response.json();
+
+    if (!gridData.has_spaces) return; // Exit if the parent doesn't have a grid
+
+    // Create and display the grid
+    gridContainer.style.display = 'block';
+    const gridEl = document.createElement('div');
+    gridEl.className = 'location-grid';
+    gridEl.style.gridTemplateColumns = `repeat(${gridData.columns}, 1fr)`;
+
+    gridData.grid.flat().forEach(cell => {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'location-grid-cell';
+        if (cell.is_occupied) {
+            cellEl.classList.add('is-occupied');
+            cellEl.textContent = cell.occupant_name;
+            cellEl.title = `Occupied by: ${cell.occupant_name}`;
+        } else {
+            cellEl.textContent = `R${cell.row} C${cell.column}`;
+            cellEl.dataset.row = cell.row;
+            cellEl.dataset.column = cell.column;
+        }
+        gridEl.appendChild(cellEl);
+    });
+
+    // Add a single event listener to the grid container
+    gridEl.addEventListener('click', (e) => {
+        const clickedCell = e.target.closest('.location-grid-cell');
+        if (!clickedCell || clickedCell.classList.contains('is-occupied')) return;
+
+        gridEl.querySelector('.is-selected')?.classList.remove('is-selected');
+        clickedCell.classList.add('is-selected');
+
+        form.querySelector('input[name="row"]').value = clickedCell.dataset.row;
+        form.querySelector('input[name="column"]').value = clickedCell.dataset.column;
+    });
+
+    gridContainer.appendChild(gridEl);
+}
+
+/**
+ * Expands all nodes in the location tree.
+ */
+function expandAllNodes() {
+    document.querySelectorAll('.location-node-children.is-collapsed').forEach(container => {
+        container.classList.remove('is-collapsed');
+    });
+    document.querySelectorAll('.location-node-toggle').forEach(button => {
+        button.classList.add('is-expanded');
+        button.querySelector('.material-symbols-outlined').textContent = 'expand_more';
+    });
+}
+
+/**
+ * Collapses all nodes in the location tree.
+ */
+function collapseAllNodes() {
+    document.querySelectorAll('.location-node-children:not(.is-collapsed)').forEach(container => {
+        container.classList.add('is-collapsed');
+    });
+    document.querySelectorAll('.location-node-toggle').forEach(button => {
+        button.classList.remove('is-expanded');
+        button.querySelector('.material-symbols-outlined').textContent = 'chevron_right';
+    });
+}
+
+// =========================================================================
+// === 4. FORM PROTOCOL IMPLEMENTATIONS
+// =========================================================================
+
+// --- Generic Protocols ---
+
 /** A generic onClear protocol step that resets a form and its errors. */
 function genericClear(form) {
     clearFormErrors(form);
@@ -169,9 +270,7 @@ function genericClear(form) {
     if (pageState.addTypeIconPicker) pageState.addTypeIconPicker.setChoiceByValue('warehouse');
 }
 
-// =========================================================================
-// === 4. PROTOCOL IMPLEMENTATIONS: FORM-SPECIFIC LOGIC
-// =========================================================================
+// --- Location Type Protocols ---
 
 /** Configures the grid inputs for the 'Add/Edit Location Type' form. */
 function addTypeConfigure(form) {
@@ -267,6 +366,8 @@ function editTypeConfigure(form, data) {
     });
 }
 
+// --- Location Protocols ---
+
 /** A custom onClear step for the Add Child form that avoids a full reset. */
 function addChildClear(form) {
     clearFormErrors(form);
@@ -293,7 +394,7 @@ async function addChildPopulate(form, data) {
     form.action = `/location_configuration/locations/add-child/`;
     form.querySelector('[name="parent"]').value = data.parentId;
     form.querySelector('[name="parent_name"]').value = data.parentName;
-    
+
     const select = form.querySelector('select[name="location_type"]');
     if (!select) {
         console.error("Add Child Modal: Could not find the location_type select element in the form.");
@@ -333,55 +434,6 @@ async function addChildPopulate(form, data) {
     }
 }
 
-/**
- * Fetches data for and renders the location grid if the parent has spaces.
- */
-async function populateLocationGrid(form, parentId) {
-    const gridContainer = form.querySelector('#location-grid-container');
-    gridContainer.style.display = 'none'; // Hide and clear by default
-    gridContainer.innerHTML = '';
-
-    const response = await fetch(`/location_configuration/get-location-grid/${parentId}/`);
-    const gridData = await response.json();
-
-    if (!gridData.has_spaces) return; // Exit if the parent doesn't have a grid
-
-    // Create and display the grid
-    gridContainer.style.display = 'block';
-    const gridEl = document.createElement('div');
-    gridEl.className = 'location-grid';
-    gridEl.style.gridTemplateColumns = `repeat(${gridData.columns}, 1fr)`;
-
-    gridData.grid.flat().forEach(cell => {
-        const cellEl = document.createElement('div');
-        cellEl.className = 'location-grid-cell';
-        if (cell.is_occupied) {
-            cellEl.classList.add('is-occupied');
-            cellEl.textContent = cell.occupant_name;
-            cellEl.title = `Occupied by: ${cell.occupant_name}`;
-        } else {
-            cellEl.textContent = `R${cell.row} C${cell.column}`;
-            cellEl.dataset.row = cell.row;
-            cellEl.dataset.column = cell.column;
-        }
-        gridEl.appendChild(cellEl);
-    });
-    
-    // Add a single event listener to the grid container
-    gridEl.addEventListener('click', (e) => {
-        const clickedCell = e.target.closest('.location-grid-cell');
-        if (!clickedCell || clickedCell.classList.contains('is-occupied')) return;
-
-        gridEl.querySelector('.is-selected')?.classList.remove('is-selected');
-        clickedCell.classList.add('is-selected');
-        
-        form.querySelector('input[name="row"]').value = clickedCell.dataset.row;
-        form.querySelector('input[name="column"]').value = clickedCell.dataset.column;
-    });
-
-    gridContainer.appendChild(gridEl);
-}
-
 /** A custom onClear step for the edit location form. */
 function editLocationClear(form) {
     genericClear(form); // Run the standard clear process first.
@@ -393,6 +445,7 @@ function editLocationClear(form) {
     }
 }
 
+/** Populates the 'Edit Location' form with data fetched from the server. */
 async function editLocationPopulate(form, data) {
     form.action = `/location_configuration/locations/edit/${data.locationId}/`;
     const response = await fetch(`/location_configuration/get-location-details/${data.locationId}/`);
@@ -445,14 +498,6 @@ function editLocationConfigure(form) {
 // === 5. INITIALIZATION
 // =========================================================================
 
-/** The main entry point for the script, executed after the DOM is loaded. */
-document.addEventListener("DOMContentLoaded", () => {
-    initIconPickers();
-    initEventListeners();
-    initLocationTreeCollapse();
-    initTreeControlButtons();
-});
-
 /** Returns the template functions for rendering icons in Choices.js. */
 const getIconPickerTemplates = (template) => {
     const renderIcon = (data) => `<span class="material-symbols-outlined">${data.value}</span>`;
@@ -486,26 +531,6 @@ const initEventListeners = () => {
 };
 
 /**
- * Handles the click event for a location node toggle button.
- * @param {Event} event - The click event.
- */
-function handleLocationNodeToggle(event) {
-    const button = event.currentTarget;
-    const childrenContainer = button.closest('.location-node').querySelector('.location-node-children');
-
-    if (!childrenContainer) return;
-
-    // Toggle the class that hides/shows the children container.
-    const isCollapsed = childrenContainer.classList.toggle('is-collapsed');
-    
-    // Also toggle a class on the button itself for styling.
-    button.classList.toggle('is-expanded', !isCollapsed);
-
-    // If it's collapsed, use the right arrow. If it's open, use the down arrow.
-    button.querySelector('.material-symbols-outlined').textContent = isCollapsed ? 'chevron_right' : 'expand_more';
-}
-
-/**
  * Attaches event listeners to all location tree toggle buttons.
  */
 const initLocationTreeCollapse = () => {
@@ -515,38 +540,20 @@ const initLocationTreeCollapse = () => {
 };
 
 /**
- * Expands all nodes in the location tree.
- */
-function expandAllNodes() {
-    document.querySelectorAll('.location-node-children.is-collapsed').forEach(container => {
-        container.classList.remove('is-collapsed');
-    });
-    document.querySelectorAll('.location-node-toggle').forEach(button => {
-        button.classList.add('is-expanded');
-        button.querySelector('.material-symbols-outlined').textContent = 'expand_more';
-    });
-}
-
-/**
- * Collapses all nodes in the location tree.
- */
-function collapseAllNodes() {
-    document.querySelectorAll('.location-node-children:not(.is-collapsed)').forEach(container => {
-        container.classList.add('is-collapsed');
-    });
-    document.querySelectorAll('.location-node-toggle').forEach(button => {
-        button.classList.remove('is-expanded');
-        button.querySelector('.material-symbols-outlined').textContent = 'chevron_right';
-    });
-}
-
-/**
  * Attaches event listeners to the main tree control buttons.
  */
 const initTreeControlButtons = () => {
     const expandBtn = document.getElementById('expand-all-btn');
     const collapseBtn = document.getElementById('collapse-all-btn');
-    
+
     if (expandBtn) expandBtn.addEventListener('click', expandAllNodes);
     if (collapseBtn) collapseBtn.addEventListener('click', collapseAllNodes);
 };
+
+/** The main entry point for the script, executed after the DOM is loaded. */
+document.addEventListener("DOMContentLoaded", () => {
+    initIconPickers();
+    initEventListeners();
+    initLocationTreeCollapse();
+    initTreeControlButtons();
+});

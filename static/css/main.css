@@ -83,8 +83,14 @@ body {
 
 .table-toolbar {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between; 
+    align-items: center;
     padding-bottom: 1rem;
+}
+
+.toolbar-button-group {
+    display: flex;
+    gap: 0.5rem;
 }
 
 /* --- Page Title & Content Styles --- */
@@ -644,14 +650,53 @@ input[type="checkbox"] {
     padding: 0.25rem 0;
 }
 
-.location-node-icon {
+.location-node-toggle {
     color: var(--color-gray-3);
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+.location-node-toggle .material-symbols-outlined {
+    transition: transform 0.2s ease-in-out;
+    font-size: 1.5rem !important;
+}
+
+.location-node-toggle-placeholder {
+    width: 28px; /* Same width as the button to maintain alignment */
+    height: 28px;
+    display: inline-block;
 }
 
 .location-node-children {
     margin-left: 2rem; /* This creates the tree indentation */
     border-left: 2px solid var(--color-gray-1);
     padding-left: 1rem;
+    display: block;
+    transition: max-height 0.3s ease-in-out;
+    overflow: hidden;
+}
+
+.location-node-children.is-collapsed {
+    display: none !important;
+}
+
+.location-node-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.location-node-content:hover {
+    background-color: var(--color-gray-1);
+}
+
+.location-node-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto; 
 }
 
 /* --- Location Grid Styles --- */

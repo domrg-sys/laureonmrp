@@ -21,7 +21,7 @@ from django.views.generic import TemplateView
 from django.views import View
 
 from .forms import AddLocationTypeForm, EditLocationTypeForm, AddTopLevelLocationForm, AddChildLocationForm, EditLocationForm
-from .models import Location, LocationType
+from .models import Location, LocationType, LocationSpace
 
 # =========================================================================
 # === 1. CONFIGURATION & HELPERS
@@ -256,31 +256,43 @@ def get_child_location_types(request, parent_id):
     return JsonResponse(data, safe=False)
 
 def get_location_details(request, location_id):
-    """
-    Returns a JSON object with the data needed to populate the
-    'Edit Location' modal form.
-    """
-    location = get_object_or_404(Location, pk=location_id, select_related='occupied_space')
+    # Fetch the specific location instance by its primary key.
+    location = get_object_or_404(Location, pk=location_id)
 
+    # Attempt to find if this location is occupying a space in a parent grid.
     space_info = None
-    if hasattr(location, 'occupied_space') and location.occupied_space:
-        space = location.occupied_space
-        space_info = f"R{space.row}, C{space.column}"
+    try:
+        # The 'occupied_space' is a reverse relationship from LocationSpace.
+        # If a related LocationSpace object exists, this line will succeed.
+        if location.occupied_space:
+            space = location.occupied_space
+            # Format the row and column into a simple string for the form.
+            space_info = f"R{space.row}, C{space.column}"
+    except LocationSpace.DoesNotExist:
+        # If no related LocationSpace exists, Django would raise this error.
+        # We catch it and simply leave space_info as None.
+        space_info = None
 
+    # Determine the parent's details and the valid location types for the dropdown.
     parent_name = None
     parent_id = None
     if location.parent:
-        valid_location_types = location.parent.location_type.allowed_children.all()
+        # If the location has a direct parent, get its name and ID.
         parent_name = location.parent.name
         parent_id = location.parent.pk
+        # The valid types are the ones allowed as children of the parent's type.
+        valid_location_types = location.parent.location_type.allowed_children.all()
     else:
+        # If it's a top-level location, it has no parent.
+        # The valid types are those that can exist at the top level.
         valid_location_types = LocationType.objects.filter(allowed_parents__isnull=True)
 
+    # Assemble the final data payload for the JSON response.
     data = {
         'name': location.name,
         'parent_name': parent_name,
         'parent_id': parent_id,
-        'space_info': space_info, # Add this line
+        'space_info': space_info,
         'current_location_type_id': location.location_type.id,
         'valid_location_types': [{'id': lt.id, 'name': lt.name} for lt in valid_location_types],
         'has_children': location.children.exists()

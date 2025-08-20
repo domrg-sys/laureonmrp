@@ -445,6 +445,14 @@ function editLocationConfigure(form) {
 // === 5. INITIALIZATION
 // =========================================================================
 
+/** The main entry point for the script, executed after the DOM is loaded. */
+document.addEventListener("DOMContentLoaded", () => {
+    initIconPickers();
+    initEventListeners();
+    initLocationTreeCollapse();
+    initTreeControlButtons();
+});
+
 /** Returns the template functions for rendering icons in Choices.js. */
 const getIconPickerTemplates = (template) => {
     const renderIcon = (data) => `<span class="material-symbols-outlined">${data.value}</span>`;
@@ -477,8 +485,68 @@ const initEventListeners = () => {
     });
 };
 
-/** The main entry point for the script, executed after the DOM is loaded. */
-document.addEventListener("DOMContentLoaded", () => {
-    initIconPickers();
-    initEventListeners();
-});
+/**
+ * Handles the click event for a location node toggle button.
+ * @param {Event} event - The click event.
+ */
+function handleLocationNodeToggle(event) {
+    const button = event.currentTarget;
+    const childrenContainer = button.closest('.location-node').querySelector('.location-node-children');
+
+    if (!childrenContainer) return;
+
+    // Toggle the class that hides/shows the children container.
+    const isCollapsed = childrenContainer.classList.toggle('is-collapsed');
+    
+    // Also toggle a class on the button itself for styling.
+    button.classList.toggle('is-expanded', !isCollapsed);
+
+    // If it's collapsed, use the right arrow. If it's open, use the down arrow.
+    button.querySelector('.material-symbols-outlined').textContent = isCollapsed ? 'chevron_right' : 'expand_more';
+}
+
+/**
+ * Attaches event listeners to all location tree toggle buttons.
+ */
+const initLocationTreeCollapse = () => {
+    document.querySelectorAll('.location-node-toggle').forEach(button => {
+        button.addEventListener('click', handleLocationNodeToggle);
+    });
+};
+
+/**
+ * Expands all nodes in the location tree.
+ */
+function expandAllNodes() {
+    document.querySelectorAll('.location-node-children.is-collapsed').forEach(container => {
+        container.classList.remove('is-collapsed');
+    });
+    document.querySelectorAll('.location-node-toggle').forEach(button => {
+        button.classList.add('is-expanded');
+        button.querySelector('.material-symbols-outlined').textContent = 'expand_more';
+    });
+}
+
+/**
+ * Collapses all nodes in the location tree.
+ */
+function collapseAllNodes() {
+    document.querySelectorAll('.location-node-children:not(.is-collapsed)').forEach(container => {
+        container.classList.add('is-collapsed');
+    });
+    document.querySelectorAll('.location-node-toggle').forEach(button => {
+        button.classList.remove('is-expanded');
+        button.querySelector('.material-symbols-outlined').textContent = 'chevron_right';
+    });
+}
+
+/**
+ * Attaches event listeners to the main tree control buttons.
+ */
+const initTreeControlButtons = () => {
+    const expandBtn = document.getElementById('expand-all-btn');
+    const collapseBtn = document.getElementById('collapse-all-btn');
+    
+    if (expandBtn) expandBtn.addEventListener('click', expandAllNodes);
+    if (collapseBtn) collapseBtn.addEventListener('click', collapseAllNodes);
+};

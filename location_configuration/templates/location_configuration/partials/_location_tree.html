@@ -1,53 +1,57 @@
 {% for location in locations %}
     <div class="location-node">
         <div class="location-node-content">
-            {# Display the icon for the location's type #}
+            {# Left side content (toggle, icon, name) #}
+            {% if location.children.all %}
+                <button type="button" class="btn-icon location-node-toggle" aria-label="Toggle children">
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            {% else %}
+                <span class="location-node-toggle-placeholder"></span>
+            {% endif %}
             <span class="material-symbols-outlined location-node-icon">{{ location.location_type.icon }}</span>
-
-            {# Display the location's name #}
             <span class="location-name">{{ location.name }}</span>
 
-            {# Add an "Add Child" button, which will trigger a new modal #}
-            <button type="button"
-                    class="btn-icon btn-icon-green add-child-btn"
-                    aria-label="Add Child Location"
-                    title="Add Child Location"
-                    data-modal-target="#add-child-location-modal"
-                    data-parent-id="{{ location.pk }}"
-                    data-parent-name="{{ location.name }}">
-              <span class="material-symbols-outlined">add</span>
-            </button>
+            {# New container for the action buttons #}
+            <div class="location-node-actions">
+                <button type="button"
+                        class="btn-icon btn-icon-green add-child-btn"
+                        aria-label="Add Child Location"
+                        title="Add Child Location"
+                        data-modal-target="#add-child-location-modal"
+                        data-parent-id="{{ location.pk }}"
+                        data-parent-name="{{ location.name }}">
+                  <span class="material-symbols-outlined">add</span>
+                </button>
 
-            {# Add an "Edit" button for the location #}
-            <button type="button"
-                    class="btn-icon btn-icon-blue edit-location-btn"
-                    aria-label="Edit Location"
-                    title="Edit Location"
-                    data-modal-target="#edit-location-modal"
-                    data-location-id="{{ location.pk }}">
-              <span class="material-symbols-outlined">edit</span>
-            </button>
+                <button type="button"
+                        class="btn-icon btn-icon-blue edit-location-btn"
+                        aria-label="Edit Location"
+                        title="Edit Location"
+                        data-modal-target="#edit-location-modal"
+                        data-location-id="{{ location.pk }}">
+                  <span class="material-symbols-outlined">edit</span>
+                </button>
 
-            {# Add a "Delete" button for the location #}
-            {% if can_delete_location and not location.children.all %}
-            <button type="button"
-                    class="btn-icon btn-icon-red"
-                    aria-label="Delete Location"
-                    title="Delete Location"
-                    data-modal-target="#delete-confirmation-modal"
-                    data-action-info='{"app_label": "location_configuration", "model_name": "Location", "pk": {{ location.pk }}, "item_name": "{{ location.name }}", "success_url": "{% url "location_configuration:locations_tab" %}"}'>
-              <span class="material-symbols-outlined">delete</span>
-            </button>
-            {% else %}
-            <span class="btn-icon btn-icon-disable" title="Permission Denied or Location has children">
-                <span class="material-symbols-outlined">delete</span>
-            </span>
-            {% endif %}
+                {% if can_delete_location and not location.children.all %}
+                <button type="button"
+                        class="btn-icon btn-icon-red"
+                        aria-label="Delete Location"
+                        title="Delete Location"
+                        data-modal-target="#delete-confirmation-modal"
+                        data-action-info='{"app_label": "location_configuration", "model_name": "Location", "pk": {{ location.pk }}, "item_name": "{{ location.name }}", "success_url": "{% url "location_configuration:locations_tab" %}"}'>
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+                {% else %}
+                <span class="btn-icon btn-icon-disable" title="Permission Denied or Location has children">
+                    <span class="material-symbols-outlined">delete</span>
+                </span>
+                {% endif %}
+            </div>
         </div>
 
-        {# This part remains the same to handle the recursion for children #}
         {% if location.children.all %}
-            <div class="location-node-children">
+            <div class="location-node-children is-collapsed">
                 {% include "location_configuration/partials/_location_tree.html" with locations=location.children.all can_delete_location=can_delete_location %}
             </div>
         {% endif %}

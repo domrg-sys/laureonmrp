@@ -1,5 +1,5 @@
 {% for location in locations %}
-    <div class="location-node">
+    <div class="location-node" data-location-id="{{ location.pk }}">
         <div class="location-node-content">
             {# Left side content (toggle, icon, name) #}
             {% if location.children.all %}
@@ -14,6 +14,7 @@
 
             {# New container for the action buttons #}
             <div class="location-node-actions">
+                {% if location.location_type.allowed_children.all %}
                 <button type="button"
                         class="btn-icon btn-icon-green add-child-btn"
                         aria-label="Add Child Location"
@@ -23,6 +24,11 @@
                         data-parent-name="{{ location.name }}">
                   <span class="material-symbols-outlined">add</span>
                 </button>
+                {% else %}
+                <span class="btn-icon btn-icon-disable" title="No child locations can be added to this type">
+                    <span class="material-symbols-outlined">add</span>
+                </span>
+                {% endif %}
 
                 <button type="button"
                         class="btn-icon btn-icon-blue edit-location-btn"

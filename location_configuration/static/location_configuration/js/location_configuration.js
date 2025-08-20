@@ -99,6 +99,7 @@ function handleModalTriggerClick(event) {
 async function handleFormSubmit(event) {
     event.preventDefault();
     const form = event.target;
+    saveTreeState();
 
     try {
         const response = await fetch(form.action, {
@@ -255,6 +256,45 @@ function collapseAllNodes() {
         button.classList.remove('is-expanded');
         button.querySelector('.material-symbols-outlined').textContent = 'chevron_right';
     });
+}
+
+/**
+ * Saves the expanded state of the location tree to session storage.
+ */
+function saveTreeState() {
+    const expandedNodeIds = [];
+    document.querySelectorAll('.location-node-toggle.is-expanded').forEach(button => {
+        const nodeId = button.closest('.location-node').dataset.locationId;
+        if (nodeId) {
+            expandedNodeIds.push(nodeId);
+        }
+    });
+    sessionStorage.setItem('expandedLocationNodes', JSON.stringify(expandedNodeIds));
+}
+
+/**
+ * Restores the expanded state of the location tree from session storage.
+ */
+function restoreTreeState() {
+    const expandedNodeIds = JSON.parse(sessionStorage.getItem('expandedLocationNodes'));
+    if (!expandedNodeIds || !Array.isArray(expandedNodeIds)) {
+        return;
+    }
+
+    expandedNodeIds.forEach(nodeId => {
+        const node = document.querySelector(`.location-node[data-location-id="${nodeId}"]`);
+        if (node) {
+            const childrenContainer = node.querySelector('.location-node-children');
+            const button = node.querySelector('.location-node-toggle');
+            if (childrenContainer && button) {
+                childrenContainer.classList.remove('is-collapsed');
+                button.classList.add('is-expanded');
+                button.querySelector('.material-symbols-outlined').textContent = 'expand_more';
+            }
+        }
+    });
+
+    sessionStorage.removeItem('expandedLocationNodes');
 }
 
 // =========================================================================
@@ -556,4 +596,5 @@ document.addEventListener("DOMContentLoaded", () => {
     initEventListeners();
     initLocationTreeCollapse();
     initTreeControlButtons();
+    restoreTreeState();
 });

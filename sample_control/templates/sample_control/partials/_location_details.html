@@ -1,0 +1,15 @@
+<div class="location-details-header">
+    <h3>{{ location.name }}</h3>
+    <p class="location-type-badge">{{ location.location_type.name }}</p>
+</div>
+
+<div class="location-details-content">
+    {% if location.location_type.has_spaces %}
+        {% include "sample_control/partials/_space_grid.html" %}
+    {% else %}
+        <div class="sample-list">
+            <h4>Samples in this location:</h4>
+            <p>Sample listing for non-grid locations is not yet implemented.</p>
+        </div>
+    {% endif %}
+</div>

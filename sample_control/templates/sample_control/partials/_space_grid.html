@@ -1,0 +1,30 @@
+<div class="space-grid-container">
+    <div class="space-grid" style="--grid-rows: {{ location.location_type.rows }}; --grid-cols: {{ location.location_type.columns }};">
+        {% for row in space_grid %}
+            {% for space in row %}
+                {% if space %}
+                    <div class="space-cell {% if space.sample %}is-occupied{% else %}is-empty{% endif %}"
+                         data-space-id="{{ space.pk }}"
+                         data-row="{{ space.row }}"
+                         data-column="{{ space.column }}">
+                        
+                        <div class="space-info">R{{ space.row }}, C{{ space.column }}</div>
+                        
+                        {% if space.sample %}
+                            <div class="sample-info">
+                                <span class="material-symbols-outlined">labs</span>
+                                <span class="sample-name">{{ space.sample.name }}</span>
+                            </div>
+                        {% else %}
+                            <div class="sample-info">
+                                <span class="empty-text">Empty</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="space-cell is-invalid"></div>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>

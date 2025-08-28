@@ -1,9 +1,27 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block page_title %}
-    Placeholder Title
+    Sample Control
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'sample_control/css/sample_control.css' %}">
 {% endblock %}
 
 {% block content %}
-    <p>Placeholder Content</p>
+    <div class="sample-control-container">
+        <div class="location-tree-panel">
+            <ul class="location-tree-root">
+                {% include "sample_control/partials/_location_tree.html" with nodes=location_tree %}
+            </ul>
+        </div>
+        <div class="location-details-panel">
+            <p>Select a location from the tree to view its details and manage samples.</p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'sample_control/js/sample_control.js' %}" defer></script>
 {% endblock %}

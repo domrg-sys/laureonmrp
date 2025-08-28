@@ -1,0 +1,24 @@
+{% for node in nodes %}
+<li class="location-node" data-location-id="{{ node.location.pk }}">
+    {# The main clickable row for the location #}
+    <div class="location-node-content {% if not node.location.location_type.can_store_samples %}cannot-store-samples{% endif %}">
+        
+        {# Show an arrow to expand/collapse if there are children #}
+        {% if node.children %}
+            <span class="tree-toggle material-symbols-outlined">chevron_right</span>
+        {% else %}
+            <span class="tree-spacer"></span>
+        {% endif %}
+        
+        <span class="material-symbols-outlined">{{ node.location.location_type.icon|default:'folder' }}</span>
+        <span class="location-name">{{ node.location.name }}</span>
+    </div>
+    
+    {# If this node has children, recursively include this template for them #}
+    {% if node.children %}
+    <ul class="location-subtree">
+        {% include "sample_control/partials/_location_tree.html" with nodes=node.children %}
+    </ul>
+    {% endif %}
+</li>
+{% endfor %}

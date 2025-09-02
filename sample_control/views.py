@@ -12,10 +12,8 @@ def _build_location_tree(locations):
 
     for loc in locations:
         node = location_map[loc.id]
-        # If the location has a parent that exists in the map, add it as a child
         if loc.parent_id and loc.parent_id in location_map:
             location_map[loc.parent_id]['children'].append(node)
-        # Otherwise, it's a root node
         else:
             root_nodes.append(node)
             
@@ -33,7 +31,6 @@ def sample_control_page(request):
 def get_location_details(request, location_id):
     """
     Fetches details for a specific location and returns it as an HTML partial.
-    This is intended to be called via an AJAX request from the frontend.
     """
     location = get_object_or_404(
         Location.objects.select_related('location_type'), pk=location_id
@@ -41,10 +38,15 @@ def get_location_details(request, location_id):
     context = {'location': location}
 
     if location.location_type.has_spaces:
-        grid = [[None] * location.location_type.columns for _ in range(location.location_type.rows)]
+        # Use 0 as a safe default if rows/columns are not set
+        rows = location.location_type.rows or 0
+        cols = location.location_type.columns or 0
+        grid = [[None] * cols for _ in range(rows)]
+        
         spaces = LocationSpace.objects.select_related('sample').filter(parent_location=location)
         for space in spaces:
-            if (space.row - 1) < len(grid) and (space.column - 1) < len(grid[0]):
+            # Check bounds to prevent server errors from bad data
+            if (space.row - 1) < rows and (space.column - 1) < cols:
                 grid[space.row - 1][space.column - 1] = space
         context['space_grid'] = grid
 

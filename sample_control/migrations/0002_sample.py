@@ -17,7 +17,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=100, unique=True)),
-                ('location', models.ForeignKey(limit_choices_to={'location_type__can_store_samples': True}, on_delete=django.db.models.deletion.PROTECT, to='location_configuration.location')),
+                ('location', models.ForeignKey(blank=True, help_text='Directly stored in this location (not in a space).', limit_choices_to={'location_type__can_store_samples': True}, null=True, on_delete=django.db.models.deletion.SET_NULL, to='location_configuration.location')),
+                ('space', models.OneToOneField(blank=True, help_text='Stored in a specific space within a location.', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sample', to='location_configuration.locationspace')),
             ],
         ),
     ]

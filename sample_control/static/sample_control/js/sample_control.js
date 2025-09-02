@@ -18,7 +18,6 @@ function handleTreeToggleClick(event) {
 async function fetchAndRenderLocationDetails(locationId, detailsPanel) {
   detailsPanel.innerHTML = '<p>Loading...</p>'; 
   try {
-    // CORRECTED LINE: Changed location_id to locationId
     const response = await fetch(`/sample_control/location/${locationId}/`);
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);

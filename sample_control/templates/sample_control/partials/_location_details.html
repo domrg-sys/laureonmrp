@@ -9,7 +9,15 @@
     {% else %}
         <div class="sample-list">
             <h4>Samples in this location:</h4>
-            <p>Sample listing for non-grid locations is not yet implemented.</p>
+            {% if samples %}
+                <ul>
+                    {% for sample in samples %}
+                        <li>{{ sample.name }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No samples are currently stored in this location.</p>
+            {% endif %}
         </div>
     {% endif %}
 </div>

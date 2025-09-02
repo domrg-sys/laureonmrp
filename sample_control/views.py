@@ -49,6 +49,10 @@ def get_location_details(request, location_id):
             if (space.row - 1) < rows and (space.column - 1) < cols:
                 grid[space.row - 1][space.column - 1] = space
         context['space_grid'] = grid
+    else:
+        # If the location does not have spaces, get the samples directly associated with it.
+        context['samples'] = Sample.objects.filter(location=location)
+
 
     html = render_to_string(
         'sample_control/partials/_location_details.html', context, request=request
